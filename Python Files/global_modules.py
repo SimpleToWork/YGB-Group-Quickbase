@@ -50,9 +50,17 @@ class ProgramCredentials:
         self.qb_app_id = f['qb_app_id']
         self.qb_app_token = f['qb_app_token']
         self.qb_user_token = f['qb_user_token']
+        self.qb_username = f['qb_username']
+        self.qb_password = f['qb_password']
+
         self.sales_table_id = f['sales_table_id']
+        self.fees_table_id = f['fees_table_id']
         self.factory_pos_table_id = f['factory_pos_table_id']
         self.suppliers_table_id = f['suppliers_table_id']
+        self.shipment_table_id = f['shipment_table_id']
+        self.shipment_detail_table_id = f['shipment_detail_table_id']
+        self.shipment_tracking_table_id = f['shipment_tracking_table_id']
+
         self.product_table_id = f['product_table_id']
         self.fba_inventory_table_id = f['fba_inventory_table_id']
 
@@ -66,7 +74,7 @@ class ProgramCredentials:
         self.port = f['port']
         self.project_folder = f['project_folder'].replace("%USERNAME%",getpass.getuser())
 
-        self.upload_products = self.set_attributes(f['upload_products'])
+        self.upload_data = self.set_attributes(f['upload_data'])
 
 
     def set_attributes(self, params):
