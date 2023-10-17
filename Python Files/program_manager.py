@@ -1,7 +1,8 @@
 
-from global_modules import print_color, run_sql_scripts, engine_setup, ProgramCredentials
+from global_modules import print_color, run_sql_scripts, engine_setup, ProgramCredentials, create_folder
 from pull_and_push_data import upload_product_data, upload_sales_data, upload_factory_pos, upload_shipment_data, \
-    upload_shipment_detail_data, upload_shipment_tracking, upload_inventory_data, upload_settlement_fees
+    upload_shipment_detail_data, upload_shipment_tracking, upload_inventory_data, upload_settlement_fees, \
+    upload_finance_fees, upload_sales_fees_data, factory_order_assignments, import_factory_pos
 from google_sheets_api import GoogleSheetsAPI
 import getpass
 import platform
@@ -9,25 +10,24 @@ import datetime
 import pandas as pd
 
 
-def google_sheet_update(project_folder, program_name, method, sheetname=None):
+def google_sheet_update(project_folder, program_name, method):
+    text_folder = f'{project_folder}\\Text Files'
+    create_folder(text_folder)
     client_secret_file = f'{project_folder}\\Text Files\\client_secret.json'
     token_file = f'{project_folder}\\Text Files\\token.json'
     sheet_id = '19FUWyywrtS4JTbOHW_GqDSEl0orqu99XCJJFa4upVlw'
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    df = GoogleSheetsAPI(client_secret_file,token_file, sheet_id, SCOPES). get_data_from_sheet(sheetname=sheetname, range_name='A:E')
-    print_color(df, color='r')
-
-    row_number = df.shape[0] + 2
+    GsheetAPI = GoogleSheetsAPI(credentials_file=client_secret_file, token_file=token_file, scopes=SCOPES, sheet_id=sheet_id)
 
     computer_name = platform.node()
     user = getpass.getuser()
     time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     data_list = [time_now, computer_name, user, program_name, method, True]
-    df = pd.DataFrame([data_list])
-    print_color(df)
-    GoogleSheetsAPI(client_secret_file,token_file, sheet_id, SCOPES).write_data_to_sheet(data =df ,sheetname=sheetname,row_number=row_number,include_headers=False,  clear_data=False)
+    sheet_name = 'YGB Group'
 
+    GsheetAPI.insert_row_to_sheet(sheetname=sheet_name, gid=2126035413,
+                                  insert_range=['A', 1, "F", 1],
+                                  data=[data_list])
 
 
 def executeScriptsFromFile(engine, folder_name, file_name):
@@ -55,17 +55,24 @@ def run_program(environment):
     start_date = "2022-01-01"
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
     executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
-    # upload_product_data(x, engine)
-    # upload_sales_data(x, engine, start_date)
-    # upload_settlement_fees(x, engine)
-    # upload_shipment_data(x,engine)
-    # upload_shipment_detail_data(x, engine)
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
+
+    upload_product_data(x, engine)
+    upload_sales_data(x, engine, start_date)
+    upload_sales_fees_data(x, engine, start_date)
+    upload_settlement_fees(x, engine)
+    upload_finance_fees(x, engine)
+    upload_shipment_data(x,engine)
+    upload_shipment_detail_data(x, engine)
     upload_shipment_tracking(x, engine)
-    # upload_inventory_data(x, engine)
-    # upload_factory_pos(x, engine)
+    upload_inventory_data(x, engine)
+    upload_factory_pos(x, engine)
+    import_factory_pos(x, engine)
 
-
+    factory_order_assignments(x, engine)
+    google_sheet_update(project_folder=x.project_folder, program_name="YGB Group", method="Run Program")
 
 if __name__ == '__main__':
+
     environment = 'development'
     run_program(environment)

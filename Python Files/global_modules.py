@@ -52,6 +52,7 @@ class ProgramCredentials:
         self.qb_user_token = f['qb_user_token']
         self.qb_username = f['qb_username']
         self.qb_password = f['qb_password']
+        self.qb_variables = f['qb_variables']
 
         self.sales_table_id = f['sales_table_id']
         self.fees_table_id = f['fees_table_id']
@@ -63,6 +64,7 @@ class ProgramCredentials:
 
         self.product_table_id = f['product_table_id']
         self.fba_inventory_table_id = f['fba_inventory_table_id']
+        self.order_fees_table_id = f['order_fees_table_id']
 
         self.outbound_email = f['outbound_email']
         self.inbound_email = f['inbound_email']
