@@ -5,6 +5,7 @@ from global_modules import print_color, run_sql_scripts, Get_SQL_Types, Change_S
 from quickbase_class import QuickbaseAPI
 from google_sheets_api import GoogleSheetsAPI
 import datetime
+from sqlalchemy import inspect
 import re
 
 def upload_product_data(x, engine):
@@ -1332,6 +1333,8 @@ def import_factory_pos(x, engine):
 
     print_color(quickbase_po_data,  color='r')
     table_name = 'ygb_quickbase_po_data'
+    if inspect(engine).has_table(table_name):
+        engine.connect().execute(f'Drop Table if exists {table_name}')
     sql_types = Get_SQL_Types(quickbase_po_data).data_types
     Change_Sql_Column_Types(engine=engine, Project_name=x.project_name, Table_Name=table_name,
                                              DataTypes=sql_types, DataFrame=quickbase_po_data)
