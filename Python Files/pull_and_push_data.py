@@ -1103,7 +1103,8 @@ def upload_factory_pos(x, engine):
      'Pick Up Scheduled', 'Delivery Scheduled']
 
     sheetname = 'Completed Shipments'
-    completed_df = GoogleSheetsAPI(client_secret_file,token_file, sheet_id, SCOPES). get_data_from_sheet(sheetname=sheetname, range_name='A:AG')
+    GsheetAPI = GoogleSheetsAPI(client_secret_file,token_file,SCOPES,  sheet_id )
+    completed_df = GsheetAPI. get_data_from_sheet(sheetname=sheetname, range_name='A:AG')
     for i in range(len(columns) - len(completed_df.columns)):
         completed_df[i] = None
 
@@ -1112,7 +1113,7 @@ def upload_factory_pos(x, engine):
     completed_df.insert(0, "PO Type", "Completed")
 
     sheetname = 'POs'
-    po_df = GoogleSheetsAPI(client_secret_file,token_file, sheet_id, SCOPES). get_data_from_sheet(sheetname=sheetname, range_name='A:AN')
+    po_df = GsheetAPI.get_data_from_sheet(sheetname=sheetname, range_name='A:AN')
     po_df.columns = columns
     print_color(po_df, color='r')
     po_df = po_df.replace("FALSE", None)
@@ -1148,9 +1149,12 @@ def upload_factory_pos(x, engine):
             new_df['COMPLETION DATE'].iloc[i] = ""
         else:
             new_df['COMPLETION DATE'].iloc[i] = value
+            # if
+            print_color(value, color='y')
         # print(value, re.search('[a-zA-Z]', value))
-
-    new_df['COMPLETION DATE'] = pd.to_datetime(new_df['COMPLETION DATE'])
+    new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\ygb po data.csv', index=False)
+    # print_color(new_df['COMPLETION DATE'].unique(), color='p')
+    new_df['COMPLETION DATE'] = pd.to_datetime(new_df['COMPLETION DATE'], errors = 'coerce')
 
 
     new_df.insert(0, "ACCOUNT_NAME", "YGB GROUP")
@@ -1176,7 +1180,7 @@ def upload_factory_pos(x, engine):
     columns = []
 
     sheetname = 'COGs'
-    cogs_df = GoogleSheetsAPI(client_secret_file, token_file, sheet_id, SCOPES).get_data_from_sheet(
+    cogs_df = GoogleSheetsAPI(client_secret_file, token_file, SCOPES, sheet_id).get_data_from_sheet(
         sheetname=sheetname, range_name='A:W')
     cogs_df.columns = [x.upper() for x in  cogs_df.columns]
     print_color(cogs_df, color='r')

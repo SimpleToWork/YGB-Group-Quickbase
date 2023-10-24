@@ -56,7 +56,7 @@ def run_program(environment):
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
-    #
+
     # upload_product_data(x, engine)
     # upload_sales_data(x, engine, start_date)
     # upload_sales_fees_data(x, engine, start_date)
@@ -68,7 +68,7 @@ def run_program(environment):
     # upload_inventory_data(x, engine)
     # upload_factory_pos(x, engine)
     import_factory_pos(x, engine)
-
+    #
     # factory_order_assignments(x, engine)
     # google_sheet_update(project_folder=x.project_folder, program_name="YGB Group", method="Run Program")
 
