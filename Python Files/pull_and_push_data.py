@@ -225,7 +225,7 @@ def upload_sales_data(x, engine, start_date):
             df['SKU'] = df['SKU'].str.upper()
 
             df = df.merge(reference_df, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
-            df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
+            # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
             print_color(df, color='p')
 
             data = []
@@ -370,7 +370,7 @@ def upload_returns_data(x, engine, start_date):
 
     df = df.merge(reference_df, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
                   right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
-    df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
+    # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
     print_color(df, color='p')
 
     data = []
@@ -1000,8 +1000,8 @@ def upload_shipment_detail_data(x, engine):
           left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
     print_color(new_df, color='g')
 
-    product_reference_df.to_csv(f'C:\\users\\Ricky\\desktop\\product_data_export.csv', index=False)
-    new_df.to_csv(f'C:\\users\\Ricky\\desktop\\shipment_detail_export.csv', index=False)
+    # product_reference_df.to_csv(f'C:\\users\\Ricky\\desktop\\product_data_export.csv', index=False)
+    # new_df.to_csv(f'C:\\users\\Ricky\\desktop\\shipment_detail_export.csv', index=False)
     data = []
 
     print( new_df['RECORD_ID'].unique())
@@ -1169,7 +1169,7 @@ def upload_inventory_data(x, engine):
 
     new_df = df
     print_color(new_df, color='g')
-    new_df.to_csv(f'C:\\users\\Ricky\\desktop\\inventory_export.csv', index=False)
+    # new_df.to_csv(f'C:\\users\\Ricky\\desktop\\inventory_export.csv', index=False)
     data = []
 
     for i in range(new_df.shape[0]):
@@ -1396,7 +1396,7 @@ def upload_factory_pos(x, engine):
     print_color(new_df, color='y')
 
     # new_df['REMARKS'] = new_df['REMARKS'].fillna("",inplace=True)
-    new_df.to_csv(f'C:\\users\\ricky\\desktop\\google_sheet_data.csv', index=False)
+    # new_df.to_csv(f'C:\\users\\ricky\\desktop\\google_sheet_data.csv', index=False)
     # cogs_df.to_csv(f'C:\\users\\ricky\\desktop\\google_sheet_data_1.csv', index=False)
     data = []
 
