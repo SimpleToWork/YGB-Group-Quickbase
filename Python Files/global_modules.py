@@ -65,6 +65,7 @@ class ProgramCredentials:
         self.product_table_id = f['product_table_id']
         self.fba_inventory_table_id = f['fba_inventory_table_id']
         self.order_fees_table_id = f['order_fees_table_id']
+        self.unit_ledger_table_id = f['unit_ledger_table_id']
 
         self.outbound_email = f['outbound_email']
         self.inbound_email = f['inbound_email']

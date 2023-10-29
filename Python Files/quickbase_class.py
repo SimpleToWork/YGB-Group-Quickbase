@@ -203,7 +203,6 @@ class QuickbaseAPI():
 
         print_color(f'Record Updated', color='b')
 
-
     def delete_qb_table_records(self,  table_id=None, data = [{}]):
         body = data
 
@@ -218,7 +217,6 @@ class QuickbaseAPI():
         print(json.dumps(r.json()))
 
         print_color(f'Records Deleted', color='b')
-
 
     def purge_table_records(self,table_id=None, user_token=None, apptoken=None,
                                 username=None, password=None,
@@ -247,7 +245,6 @@ class QuickbaseAPI():
         print_color(r.content)
 
         print_color(f'Records Purged', color='b')
-
 
     def create_qb_table_records(self,  table_id=None, user_token=None, apptoken=None,
                                 username=None, password=None,

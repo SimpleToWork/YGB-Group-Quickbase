@@ -54,33 +54,38 @@ d.`AMOUNT-TYPE`, d.`AMOUNT-DESCRIPTION`, ifnull(date(POSTEDDATE), date(end_date)
 
 
 
-
-
+drop table ygb_unique_account_sku;
+create table if not exists ygb_unique_account_sku(primary key (account_name, sku))
+select * from
+(select account_name, sku, asin, row_number() over (partition by account_name, sku order by asin desc) as ranking
+from product_data) A 
+where ranking = 1;
 
 Drop table if exists quickbase_settlement_order_data;
 create table if not exists quickbase_settlement_order_data(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU))
-select "POSTED" AS STATUS, ACCOUNT_NAME, `ORDER-ID`, SKU,  `AMOUNT-DESCRIPTION` , 
+select "POSTED" AS STATUS, ACCOUNT_NAME, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN,  `AMOUNT-DESCRIPTION` , 
 sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) as FBA_Fee,
 sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end) as Commission,
 sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) as Principal                
-from settlements 
+from settlements A
+left join ygb_unique_account_sku B using(ACCOUNT_NAME, sku)
 where  `SETTLEMENT-START-DATE` >= "2022-01-01"
 and `AMOUNT-DESCRIPTION` in ("FBAPerUnitFulfillmentFee", "Commission", "Principal")
 group by  ACCOUNT_NAME, `ORDER-ID`, SKU;
 
 Drop table if exists quickbase_finance_order_data;
 create table if not exists quickbase_finance_order_data(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU))
-select STATUS, ACCOUNT_NAME, `ORDER-ID`, SKU,  `AMOUNT-DESCRIPTION` , 
-sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) as FBA_Fee,
-sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end) as Commission,
-sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) as Principal      
+select STATUS, ACCOUNT_NAME, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
+ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) ,0) as FBA_Fee,
+ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end),0) as Commission,
+ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) ,0) as Principal      
 FROM
 (select "Open" as STATUS, A.ACCOUNT_NAME, A.GROUP_ID as  `SETTLEMENT-ID`,AMAZONORDERID AS  `ORDER-ID`,  CURRENCYCODE as  CURRENCY,
 date(start_date) as `SETTLEMENT-START-DATE`,date(end_date) as`SETTLEMENT-END-DATE`,
 c.Total_amount as `TOTAL-AMOUNT`, D.`TRANSACTION-TYPE`, D.`AMOUNT-TYPE`, D.`AMOUNT-DESCRIPTION`, 
 ifnull(date(POSTEDDATE), date(end_date)) as `POSTED-DATE`, `SELLERSKU` as `SKU`,b.asin, sum(`CURRENCYAMOUNT`)  as AMOUNT 
 from finances A
-left join ygb_product_account_asin B on a.account_name = b.account_name and a.SELLERSKU = b.sku
+left join ygb_unique_account_sku B on a.account_name = b.account_name and a.SELLERSKU = b.sku
 left join finances_total_amounts C  on a.account_name = c.account_name and  a.GROUP_ID = c.GROUP_ID
 left join finances_transactions_mapping D on 
 case when ADJUSTMENTTYPE is not null then ADJUSTMENTTYPE

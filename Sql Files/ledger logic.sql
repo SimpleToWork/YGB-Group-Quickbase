@@ -1,19 +1,19 @@
+use ybg_group_amazon_seller_central;
+
 set @start_date:= "2022-11-01";
 update ygb_quickbase_po_data set Eta = "2023-10-04" where PO_Status= "Completed" and ETA = "";
 
 
 drop table if exists ygb_quickbase_active_sku_list;
 create table if not exists ygb_quickbase_active_sku_list(primary key(account_name, sku))
-select distinct account_name, SKU from product_data
+select distinct account_name, SKU, ASIN from product_data
 where sku in (select distinct sku from ygb_quickbase_po_data where ETA >= @start_date);
 
 
-select * from ygb_quickbase_po_data;
--- where sku in ( "Exw-Fam-9871", "B2-Wood-652", "Bds-654", "Bds-754", "Bds-754-Wg", "B09Fyhmsy4-Newitem-Fba");
 
 drop table if exists ygb_inventory_ledger_summary;
 create table if not exists ygb_inventory_ledger_summary(PRIMARY KEY(ACCOUNT_NAME, MSKU, DATE, DISPOSITION))
-select A.ACCOUNT_NAME, DATE, ASIN, MSKU, DISPOSITION, SUM(`STARTING WAREHOUSE BALANCE`) AS `STARTING WAREHOUSE BALANCE`,
+select A.ACCOUNT_NAME, DATE, A.ASIN, MSKU, DISPOSITION, SUM(`STARTING WAREHOUSE BALANCE`) AS `STARTING WAREHOUSE BALANCE`,
 SUM(RECEIPTS) AS RECEIPTS, 
 SUM(`CUSTOMER SHIPMENTS`) as `CUSTOMER SHIPMENTS`, 
 sum(`CUSTOMER RETURNS`) as `CUSTOMER RETURNS`, 
@@ -44,7 +44,7 @@ order by date desc;
 
 drop table if exists ygb_inventory_ledger_order_setup;
 create table if not exists ygb_inventory_ledger_order_setup(primary key(ACCOUNT_NAME, `AMAZON-ORDER-ID`, sku))
-select A.ACCOUNT_NAME, `AMAZON-ORDER-ID`, date(`PURCHASE-DATE`) as date, A.SKU, asin, `ORDER-STATUS`, `ITEM-STATUS`, sum(-QUANTITY) as QUANTITY
+select A.ACCOUNT_NAME, `AMAZON-ORDER-ID`, date(`PURCHASE-DATE`) as date, A.SKU, A.asin, `ORDER-STATUS`, `ITEM-STATUS`, sum(-QUANTITY) as QUANTITY
 from all_orders A
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
 where  `PURCHASE-DATE` >=  @start_date and  `PURCHASE-DATE` <= @max_date and `AMAZON-ORDER-ID` not like 'S%'
@@ -55,7 +55,7 @@ group by  A.ACCOUNT_NAME, `AMAZON-ORDER-ID`, A.SKU;
 
 drop table if exists ygb_inventory_ledger_returns;
 create table if not exists ygb_inventory_ledger_returns(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU , date))
-select A.ACCOUNT_NAME, `ORDER-ID`, date(`RETURN-DATE`) as date , A.SKU, ASIN, "Return", STATUS, sum(QUANTITY) as QUANTITY
+select A.ACCOUNT_NAME, `ORDER-ID`, date(`RETURN-DATE`) as date , A.SKU, A.ASIN, "Return", STATUS, sum(QUANTITY) as QUANTITY
 from fba_returns A 
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
 where status != "REIMBURSED"
@@ -67,28 +67,28 @@ drop table if exists ygb_inventory_ledger_receipts;
 create table if not exists ygb_inventory_ledger_receipts
 select B.*, ifnull(lag(Rolling_Qty, 1) over(partition by Account_Name, sku order by id),0) as Last_Rolling_qty from
 (select A.*, sum(QTY) over(partition by Account_Name, sku order by id) as Rolling_Qty from
-(select row_number() over (partition by A.Account_Name, A.sku order by  A.Account_Name, A.sku, ETA) as ID, A.Account_Name,FBA_Shipment_ID,ETA, A.sku, asin, "Received",  PO_Status, QTY  ,
+(select row_number() over (partition by A.Account_Name, A.sku order by  A.Account_Name, A.sku, ETA) as ID, A.Account_Name,Record_ID_Num, FBA_Shipment_ID,ETA, A.sku, a.asin, "Received",  PO_Status, QTY  ,
 Unit_Price, Duties / QTY as Duties, Customs_Fees / QTY as Customs_Fees, Demmurage / QTY as Demmurage, Container_Cost/ QTY as Container_Cost, Trucking_Cost / QTY as Trucking_Cost
 
 from ygb_quickbase_po_data A
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
 where  PO_Status = "Completed" and FBA_Shipment_ID != "" and ETA >= @start_date) A) B;
 
-select * from ygb_quickbase_po_data where  PO_Status = "Completed" and ETA >= @start_date;
-
 
 drop table if exists ygb_inventory_ledger_removals;
 create table if not exists ygb_inventory_ledger_removals
-select a.Account_Name, `ORDER-ID`, date(`REQUEST-DATE`) as date, a.SKU, "" as asin, "Removal", `ORDER-STATUS`, -`SHIPPED-QUANTITY`
+select a.Account_Name, `ORDER-ID`, date(`REQUEST-DATE`) as date, a.SKU,B.ASIN as asin, "Removal", `ORDER-STATUS`, -`SHIPPED-QUANTITY`
 from fba_removal_order_detail A
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
 where date(`REQUEST-DATE`) >=  @start_date
 and `ORDER-STATUS` in ("Completed");
 
 
+
+
 drop table if exists ygb_inventory_ledger_adjustments;
 create table if not exists ygb_inventory_ledger_adjustments
-select a.ACCOUNT_NAME,`REFERENCE ID`, DATE, MSKU, ASIN, `EVENT TYPE`, `EVENT TYPE` as status, QUANTITY  
+select a.ACCOUNT_NAME,`REFERENCE ID`, DATE, MSKU, a.ASIN, `EVENT TYPE`, `EVENT TYPE` as status, QUANTITY  
 from ledger_detail_view A
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.msku = b.sku
 where `EVENT TYPE` = "Adjustments"  and date >=  @start_date;
@@ -119,14 +119,7 @@ Set a.last_rolling_qty = B.Last_Rolling;
 
 drop table if exists ygb_inventory_ledger_assignment;
 create table if not exists ygb_inventory_ledger_assignment
-select A.*, B.FBA_Shipment_ID, B.Rolling_Qty as PO_Rolling_Qty, B.Last_Rolling_qty as PO_Last_Rolling_qty
+select A.*, B.record_id_num,  B.FBA_Shipment_ID, B.Rolling_Qty as PO_Rolling_Qty, B.Last_Rolling_qty as PO_Last_Rolling_qty,
+B.Unit_Price, B.Duties, B.Customs_Fees, B.Demmurage, B.Container_Cost, B.Trucking_Cost
 from ygb_inventory_ledger_detail A 
 left join ygb_inventory_ledger_receipts B on A.Account_Name = B.Account_Name and A.sku = B.sku and A.rolling_qty <= B.rolling_qty and greatest(A.rolling_qty,0) >= B.last_rolling_qty;
-
-
-
-
-
-select * from ygb_inventory_ledger_receipts;
-select * from ygb_inventory_ledger_assignment where FBA_Shipment_ID is null;
-select * from ygb_quickbase_po_data
