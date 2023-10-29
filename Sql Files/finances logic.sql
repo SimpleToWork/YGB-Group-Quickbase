@@ -13,7 +13,11 @@ ADJUSTMENTTYPE, CHARGETYPE, FEETYPE, PROMOTIONTYPE,
 case when CURRENCYAMOUNT <0 then "debit"
 	else "credit" end as credit_debit
 from finances) A
-where fee_type is not null;
+where fee_type is not null
+group by Fee_Type, credit_debit;
+
+
+
 drop table if exists finances_transactions_mapping;
 create table if not exists finances_transactions_mapping(primary key(Fee_Type, credit_debit))
 Select A.Fee_Type, A.credit_debit, 
@@ -54,7 +58,7 @@ d.`AMOUNT-TYPE`, d.`AMOUNT-DESCRIPTION`, ifnull(date(POSTEDDATE), date(end_date)
 
 
 
-drop table ygb_unique_account_sku;
+drop table if exists ygb_unique_account_sku;
 create table if not exists ygb_unique_account_sku(primary key (account_name, sku))
 select * from
 (select account_name, sku, asin, row_number() over (partition by account_name, sku order by asin desc) as ranking
@@ -101,16 +105,3 @@ c.`Total_amount`,d.`TRANSACTION-TYPE`,
 d.`AMOUNT-TYPE`, d.`AMOUNT-DESCRIPTION`, ifnull(date(POSTEDDATE), date(end_date)), `SELLERSKU`, b.asin) a
 group by  ACCOUNT_NAME,  `ORDER-ID`, SKU;
 
-
-
--- select
--- A.ACCOUNT_NAME, QUANTITY, `PURCHASE-DATE`,`ITEM-PRICE`, ASIN, `AMAZON-ORDER-ID`, `MERCHANT-ORDER-ID`,
--- `ORDER-STATUS`, `FULFILLMENT-CHANNEL`, `SALES-CHANNEL`,`ORDER-CHANNEL`, `SHIP-SERVICE-LEVEL`, `PRODUCT-NAME`,
--- A.SKU, `ITEM-STATUS`,CURRENCY,`ITEM-TAX`, `SHIPPING-PRICE`, `SHIPPING-TAX`, `GIFT-WRAP-PRICE`, `GIFT-WRAP-TAX`,
--- `ITEM-PROMOTION-DISCOUNT`, `SHIP-PROMOTION-DISCOUNT`, `SHIP-CITY`, `SHIP-STATE`, `SHIP-POSTAL-CODE`,
--- `SHIP-COUNTRY`, `PROMOTION-IDS`, `IS-BUSINESS-ORDER`, `PURCHASE-ORDER-NUMBER`, `PRICE-DESIGNATION`,
--- `IS-TRANSPARENCY`, `SIGNATURE-CONFIRMATION-RECOMMENDED`, ifnull(b.STATUS, c.STATUS) as STATUS,  ifnull(B.FBA_Fee, C.FBA_Fee) as FBA_FEE, ifnull(B.Commission, C.Commission) as COMMISSON, ifnull(B.Principal, C.Principal) as PRINCIPAL
--- from all_orders A
--- left join quickbase_settlement_order_data B on A.ACCOUNT_NAME = B.ACCOUNT_NAME and A.`AMAZON-ORDER-ID` = B.`ORDER-ID` and A.SKU = b.SKU
--- left join quickbase_finance_order_data C on A.ACCOUNT_NAME = C.ACCOUNT_NAME and A.`AMAZON-ORDER-ID` = C.`ORDER-ID` and A.SKU = C.SKU
--- where  `PURCHASE-DATE` >= "2023-10-04" and `PURCHASE-DATE` < "2023-10-05";
