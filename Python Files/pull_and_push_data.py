@@ -205,7 +205,7 @@ def upload_sales_data(x, engine, start_date):
             print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
         else:
             query = f'''select
-            A.ACCOUNT_NAME, QUANTITY, `PURCHASE-DATE`,`ITEM-PRICE`, ASIN, `AMAZON-ORDER-ID`, `MERCHANT-ORDER-ID`,
+            A.ACCOUNT_NAME, QUANTITY, `PURCHASE-DATE`,`ITEM-PRICE`, A.ASIN, `AMAZON-ORDER-ID`, `MERCHANT-ORDER-ID`,
             `ORDER-STATUS`, `FULFILLMENT-CHANNEL`, `SALES-CHANNEL`,`ORDER-CHANNEL`, `SHIP-SERVICE-LEVEL`, `PRODUCT-NAME`,
             A.SKU, `ITEM-STATUS`,CURRENCY,`ITEM-TAX`, `SHIPPING-PRICE`, `SHIPPING-TAX`, `GIFT-WRAP-PRICE`, `GIFT-WRAP-TAX`,
             `ITEM-PROMOTION-DISCOUNT`, `SHIP-PROMOTION-DISCOUNT`, `SHIP-CITY`, `SHIP-STATE`, `SHIP-POSTAL-CODE`,
@@ -474,6 +474,7 @@ def upload_returns_data(x, engine, start_date):
 
         counter += 1
         # break
+
 
 def upload_sales_fees_data(x, engine, start_date):
     Qb_API = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id)
