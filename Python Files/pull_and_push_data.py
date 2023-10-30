@@ -861,24 +861,36 @@ def upload_shipment_data(x, engine):
     account_name_column = shipment_column_dict.get(x.upload_data.shipment_fields.account_name)
     shipment_column = shipment_column_dict.get(x.upload_data.shipment_fields.shipment_id)
 
-    reference_df = quickbase_shipment_data[[account_name_column, shipment_column]]
-    reference_df.columns = ['ACCOUNT_NAME', 'SHIPMENTID']
-    reference_df.insert(0, "Source", "Quickbase")
 
+    print_color(quickbase_shipment_data, color='r')
 
-    print_color(reference_df, color='y')
     df = pd.read_sql(f'''select ACCOUNT_NAME, SHIPMENTID, SHIPMENTNAME, NAME,
-        ADDRESSLINE1, city, STATEORPROVINCECODE, COUNTRYCODE, POSTALCODE,
-        DESTINATIONFULFILLMENTCENTERID, SHIPMENTSTATUS
-        from inbound_shipments''', con=engine)
-
-
+          ADDRESSLINE1, city, STATEORPROVINCECODE, COUNTRYCODE, POSTALCODE,
+          DESTINATIONFULFILLMENTCENTERID, SHIPMENTSTATUS
+          from inbound_shipments''', con=engine)
     df.columns = [x.upper() for x in df.columns]
-    print_color(df,color='y')
+    print_color(df, color='y')
     df.insert(0, "Source", "SQL")
 
-    new_df = pd.concat([reference_df, df], sort=False).drop_duplicates(subset=['ACCOUNT_NAME', 'SHIPMENTID'], keep=False)
-    new_df = new_df[new_df['Source'] == 'SQL']
+    if quickbase_shipment_data.shape[0]>0:
+        reference_df = quickbase_shipment_data[[account_name_column, shipment_column]]
+        reference_df.columns = ['ACCOUNT_NAME', 'SHIPMENTID']
+        reference_df.insert(0, "Source", "Quickbase")
+
+
+        print_color(reference_df, color='y')
+        new_df = pd.concat([reference_df, df], sort=False).drop_duplicates(subset=['ACCOUNT_NAME', 'SHIPMENTID'],
+                                                                           keep=False)
+        new_df = new_df[new_df['Source'] == 'SQL']
+
+    else:
+        new_df = df
+
+
+
+
+
+
     print_color(new_df, color='g')
     data = []
 
@@ -1075,21 +1087,19 @@ def upload_shipment_tracking(x, engine):
     account_name_column = tracking_column_dict.get(x.upload_data.shipment_tracking_fields.account_name)
     shipment_column = tracking_column_dict.get(x.upload_data.shipment_tracking_fields.shipment_id)
 
-    reference_df = quickbase_tracking_data[[account_name_column, shipment_column]]
-    reference_df.columns = ['ACCOUNT_NAME', 'SHIPMENTID']
-    # print_color(reference_df, color='y')
-
-
-
-
     df = pd.read_sql(f'''select ACCOUNT_NAME, SHIPMENTID,
             SHIPMENTTYPE, TRACKINGID, TRANSPORTSTATUS, CARRIERNAME, VALUE as COST, CURRENCYCODE as CURRENCY, 
             WEIGHT_VALUE, WEIGHT_UNIT, PACKAGESTATUS
             from inbound_transport_detail''', con=engine)
     df.columns = [x.upper() for x in df.columns]
     df = df.replace(np.nan, "")
-    new_df = pd.concat([reference_df, df], sort=False).drop_duplicates(subset=['ACCOUNT_NAME', 'SHIPMENTID'], keep=False)
 
+    if quickbase_tracking_data.shape[0]>0:
+        reference_df = quickbase_tracking_data[[account_name_column, shipment_column]]
+        reference_df.columns = ['ACCOUNT_NAME', 'SHIPMENTID']
+        new_df = pd.concat([reference_df, df], sort=False).drop_duplicates(subset=['ACCOUNT_NAME', 'SHIPMENTID'], keep=False)
+    else:
+        new_df = df
     # new_df = df
     print_color(new_df, color='g')
     data = []
