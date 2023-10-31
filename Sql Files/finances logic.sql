@@ -91,7 +91,9 @@ create table if not exists quickbase_finance_order_data
 select STATUS, ACCOUNT_NAME,
  `SETTLEMENT-START-DATE` as  Start_Date,
  `SETTLEMENT-END-DATE` as  End_Date,
- POSTEDDATE as  `POSTED-DATE`, `SETTLEMENT-ID` , `TRANSACTION-TYPE`, `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
+ POSTEDDATE as  `POSTED-DATE`, `SETTLEMENT-ID` , `TRANSACTION-TYPE`, 
+null as Group_ID,
+ `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) ,0) as FBA_Fee,
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end),0) as Commission,
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) ,0) as Principal      
@@ -116,6 +118,7 @@ date(start_date),  date(end_date),
 c.`Total_amount`,d.`TRANSACTION-TYPE`, 
 d.`AMOUNT-TYPE`, d.`AMOUNT-DESCRIPTION`, ifnull(date(POSTEDDATE), date(end_date)), `SELLERSKU`, b.asin) a
 group by  ACCOUNT_NAME,  `ORDER-ID`, SKU, `TRANSACTION-TYPE`;
+
 
 
 drop table if exists combined_quickbase_settlement_order_data;
