@@ -532,27 +532,30 @@ def upload_sales_fees_data(x, engine, start_date):
         df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
         df['ASIN'] = df['ASIN'].str.upper()
         df['SKU'] = df['SKU'].str.upper()
-
+        print_color(df.shape[0], color='y')
         df = df.merge(reference_df, how='left',
                       left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
                       right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
+
+        print_color(df.shape[0], color='y')
+
         counter = 0
         for i in range(0, df.shape[0], 1000):
-
+            print_color(i, i+999, color='r')
             new_df = df.loc[i:i + 999]
-            # print(new_df)
+            # # print(new_df)
             qb_data = []
             for j in range(new_df.shape[0]):
                 # record_id = str(df['RECORD_ID'].iloc[j])
-                account_name = df['ACCOUNT_NAME'].iloc[j]
-                settlement_id = str(df['SETTLEMENT-ID'].iloc[j])
-                status = df['STATUS'].iloc[j]
-                order_id = str(df['ORDER-ID'].iloc[j])
-                sku = df['SKU'].iloc[j]
+                account_name = new_df['ACCOUNT_NAME'].iloc[j]
+                settlement_id = str(new_df['SETTLEMENT-ID'].iloc[j])
+                status = new_df['STATUS'].iloc[j]
+                order_id = str(new_df['ORDER-ID'].iloc[j])
+                sku = new_df['SKU'].iloc[j]
 
-                fba_fee = str(df['FBA_FEE'].iloc[j]).replace("nan","0")
-                commission = str(df['COMMISSION'].iloc[j]).replace("nan","0")
-                asin = df['ASIN'].iloc[j]
+                fba_fee = str(new_df['FBA_FEE'].iloc[j]).replace("nan","0")
+                commission = str(new_df['COMMISSION'].iloc[j]).replace("nan","0")
+                asin = new_df['ASIN'].iloc[j]
                 related_product = str(new_df['RECORD_ID'].iloc[j]).replace("nan","")
 
                 body = {
