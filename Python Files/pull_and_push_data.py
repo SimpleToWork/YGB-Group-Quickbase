@@ -552,9 +552,9 @@ def upload_sales_fees_data(x, engine, start_date):
                 status = new_df['STATUS'].iloc[j]
                 order_id = str(new_df['ORDER-ID'].iloc[j])
                 sku = new_df['SKU'].iloc[j]
-                start__date = new_df['START-DATE'].iloc[j]
-                end_date = new_df['END-DATE'].iloc[j]
-                posted_date =  new_df['POSTED-DATE'].iloc[j]
+                start_date = new_df['START_DATE'].iloc[j].strftime('%Y-%m-%d')
+                end_date = new_df['END_DATE'].iloc[j].strftime('%Y-%m-%d')
+                posted_date =  new_df['POSTED-DATE'].iloc[j].strftime('%Y-%m-%d')
 
                 fba_fee = str(new_df['FBA_FEE'].iloc[j]).replace("nan","0")
                 commission = str(new_df['COMMISSION'].iloc[j]).replace("nan","0")
@@ -582,6 +582,8 @@ def upload_sales_fees_data(x, engine, start_date):
                 # break
             # print_color(qb_data, color='r')
             print_color(f'Count of qb_data: {len(qb_data)}', color='g')
+
+            print_color(qb_data, color='y')
             if len(qb_data) > 0:
                 QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.order_fees_table_id,
                                                                                             user_token=x.qb_user_token,
