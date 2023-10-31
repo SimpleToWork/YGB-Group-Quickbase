@@ -67,7 +67,10 @@ where ranking = 1;
 
 Drop table if exists quickbase_settlement_order_data;
 create table if not exists quickbase_settlement_order_data(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU))
-select "POSTED" AS STATUS, ACCOUNT_NAME, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN,  `AMOUNT-DESCRIPTION` , 
+select "POSTED" AS STATUS, ACCOUNT_NAME, 
+date(`SETTLEMENT-START-DATE`) as Start_Date, 
+date(`SETTLEMENT-END-DATE`) as End_Date, 
+`POSTED-DATE`, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN,  `AMOUNT-DESCRIPTION` , 
 sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) as FBA_Fee,
 sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end) as Commission,
 sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) as Principal                
@@ -77,14 +80,19 @@ where  `SETTLEMENT-START-DATE` >= "2022-01-01"
 and `AMOUNT-DESCRIPTION` in ("FBAPerUnitFulfillmentFee", "Commission", "Principal")
 group by  ACCOUNT_NAME, `ORDER-ID`, SKU;
 
+
+
 Drop table if exists quickbase_finance_order_data;
 create table if not exists quickbase_finance_order_data(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU))
-select STATUS, ACCOUNT_NAME, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
+select STATUS, ACCOUNT_NAME,
+ `SETTLEMENT-START-DATE` as  Start_Date,
+ `SETTLEMENT-END-DATE` as  End_Date,
+ POSTEDDATE as  `POSTED-DATE`, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) ,0) as FBA_Fee,
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end),0) as Commission,
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) ,0) as Principal      
 FROM
-(select "Open" as STATUS, A.ACCOUNT_NAME, A.GROUP_ID as  `SETTLEMENT-ID`,AMAZONORDERID AS  `ORDER-ID`,  CURRENCYCODE as  CURRENCY,
+(select "Open" as STATUS, A.ACCOUNT_NAME, date(POSTEDDATE) as POSTEDDATE, A.GROUP_ID as  `SETTLEMENT-ID`,AMAZONORDERID AS  `ORDER-ID`,  CURRENCYCODE as  CURRENCY,
 date(start_date) as `SETTLEMENT-START-DATE`,date(end_date) as`SETTLEMENT-END-DATE`,
 c.Total_amount as `TOTAL-AMOUNT`, D.`TRANSACTION-TYPE`, D.`AMOUNT-TYPE`, D.`AMOUNT-DESCRIPTION`, 
 ifnull(date(POSTEDDATE), date(end_date)) as `POSTED-DATE`, `SELLERSKU` as `SKU`,b.asin, sum(`CURRENCYAMOUNT`)  as AMOUNT 
@@ -104,4 +112,6 @@ date(start_date),  date(end_date),
 c.`Total_amount`,d.`TRANSACTION-TYPE`, 
 d.`AMOUNT-TYPE`, d.`AMOUNT-DESCRIPTION`, ifnull(date(POSTEDDATE), date(end_date)), `SELLERSKU`, b.asin) a
 group by  ACCOUNT_NAME,  `ORDER-ID`, SKU;
+
+
 

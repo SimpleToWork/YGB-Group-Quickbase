@@ -552,6 +552,9 @@ def upload_sales_fees_data(x, engine, start_date):
                 status = new_df['STATUS'].iloc[j]
                 order_id = str(new_df['ORDER-ID'].iloc[j])
                 sku = new_df['SKU'].iloc[j]
+                start__date = new_df['START-DATE'].iloc[j]
+                end_date = new_df['END-DATE'].iloc[j]
+                posted_date =  new_df['POSTED-DATE'].iloc[j]
 
                 fba_fee = str(new_df['FBA_FEE'].iloc[j]).replace("nan","0")
                 commission = str(new_df['COMMISSION'].iloc[j]).replace("nan","0")
@@ -570,8 +573,9 @@ def upload_sales_fees_data(x, engine, start_date):
                     x.upload_data.order_fees_fields.asin: {"value": asin},
                     x.upload_data.order_fees_fields.related_product: {"value": related_product},
 
-
-
+                    x.upload_data.order_fees_fields.start_date: {"value": start_date},
+                    x.upload_data.order_fees_fields.end_date: {"value": end_date},
+                    x.upload_data.order_fees_fields.posted_date: {"value": posted_date},
 
                 }
                 qb_data.append(body)

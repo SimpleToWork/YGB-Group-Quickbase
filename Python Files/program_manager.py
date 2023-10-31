@@ -52,7 +52,7 @@ def run_program(environment):
     start_date = "2023-01-01"
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
-    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
 
     # upload_product_data(x, engine)
     # upload_sales_data(x, engine, start_date)
