@@ -54,9 +54,9 @@ def run_program(environment):
     executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
     executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
 
-    # upload_product_data(x, engine)
-    # upload_sales_data(x, engine, start_date)
-    # upload_returns_data(x, engine, start_date)
+    upload_product_data(x, engine)
+    upload_sales_data(x, engine, start_date)
+    upload_returns_data(x, engine, start_date)
     #
     # upload_sales_fees_data(x, engine, start_date)
     #
