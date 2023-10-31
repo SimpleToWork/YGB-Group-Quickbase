@@ -368,112 +368,63 @@ def upload_returns_data(x, engine, start_date):
     df['ASIN'] = df['ASIN'].str.upper()
     df['SKU'] = df['SKU'].str.upper()
 
+    print_color(df.shape[0], color='p')
     df = df.merge(reference_df, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
                   right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
     # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
-    print_color(df, color='p')
+    print_color(df.shape[0], color='p')
 
     data = []
     print_color(df.columns, color='y')
     counter = 0
-    for i in range(0, df.shape[0], 1000):
-        new_df = df.loc[i:i + 999]
-        for j in range(new_df.shape[0]):
-            record_id = str(new_df['RECORD_ID'].iloc[j])
-            account_name = new_df['ACCOUNT_NAME'].iloc[j]
-            quantity = str(new_df['QUANTITY'].iloc[j])
-            purchase_date = new_df['PURCHASE-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
-            item_price = new_df['ITEM-PRICE'].iloc[j]
-            asin = new_df['ASIN'].iloc[j]
-            amazon_order_id = new_df['AMAZON-ORDER-ID'].iloc[j]
-            merchant_order_id = new_df['MERCHANT-ORDER-ID'].iloc[j]
-            order_status = new_df['ORDER-STATUS'].iloc[j]
-            # fulfillment_channel = new_df['FULFILLMENT-CHANNEL'].iloc[j]
-            # sales_channel = new_df['SALES-CHANNEL'].iloc[j]
-            # order_channel = new_df['ORDER-CHANNEL'].iloc[j]
-            # ship_service_level = new_df['SHIP-SERVICE-LEVEL'].iloc[j]
-            product_name = new_df['PRODUCT-NAME'].iloc[j]
-            sku = new_df['SKU'].iloc[j]
-            item_status = new_df['ITEM-STATUS'].iloc[j]
-            # currency = new_df['CURRENCY'].iloc[j]
-            # item_tax = new_df['ITEM-TAX'].iloc[j]
-            # shipping_price = new_df['SHIPPING-PRICE'].iloc[j]
-            # shipping_tax = new_df['SHIPPING-TAX'].iloc[j]
-            # gift_wrap_price = new_df['GIFT-WRAP-PRICE'].iloc[j]
-            # gift_wrap_tax = new_df['GIFT-WRAP-TAX'].iloc[j]
-            # item_promotion_discount = new_df['ITEM-PROMOTION-DISCOUNT'].iloc[j]
-            # ship_promotion_discount = new_df['SHIP-PROMOTION-DISCOUNT'].iloc[j]
-            # ship_city = new_df['SHIP-CITY'].iloc[j]
-            # ship_state = new_df['SHIP-STATE'].iloc[j]
-            # ship_postal_code = new_df['SHIP-POSTAL-CODE'].iloc[j]
-            # ship_country = new_df['SHIP-COUNTRY'].iloc[j]
-            # promotion_ids = new_df['PROMOTION-IDS'].iloc[j]
-            # is_business_order = new_df['IS-BUSINESS-ORDER'].iloc[j]
-            # purchase_order_number = new_df['PURCHASE-ORDER-NUMBER'].iloc[j]
-            # price_designation = new_df['PRICE-DESIGNATION'].iloc[j]
-            # is_transparency = new_df['IS-TRANSPARENCY'].iloc[j]
-            # signature_confirmation_recommended = new_df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
-            # status = new_df['STATUS'].iloc[j]
-            # fba_fee = new_df['FBA_FEE'].iloc[j]
-            # commission = new_df['COMMISSON'].iloc[j]
-            # principal = new_df['PRINCIPAL'].iloc[j]
-
-            body = {
-                x.upload_data.sales_fields.record_id: {"value": record_id},
-                x.upload_data.sales_fields.account_name: {"value": account_name},
-                x.upload_data.sales_fields.quantity: {"value": quantity},
-                x.upload_data.sales_fields.purchase_date: {"value": purchase_date},
-                x.upload_data.sales_fields.item_price: {"value": item_price},
-                x.upload_data.sales_fields.asin: {"value": asin},
-                x.upload_data.sales_fields.amazon_order_id: {"value": amazon_order_id},
-                x.upload_data.sales_fields.merchant_order_id: {"value": merchant_order_id},
-                x.upload_data.sales_fields.order_status: {"value": order_status},
-                # x.upload_data.sales_fields.fulfillment_channel: {"value": fulfillment_channel},
-                # x.upload_data.sales_fields.sales_channel: {"value": sales_channel},
-                # x.upload_data.sales_fields.order_channel: {"value": order_channel},
-                # x.upload_data.sales_fields.ship_service_level: {"value": ship_service_level},
-                x.upload_data.sales_fields.product_name: {"value": product_name},
-                x.upload_data.sales_fields.sku: {"value": sku},
-                x.upload_data.sales_fields.item_status: {"value": item_status}
-                # x.upload_data.sales_fields.currency: {"value": currency},
-                # x.upload_data.sales_fields.item_tax: {"value": item_tax},
-                # x.upload_data.sales_fields.shipping_price: {"value": shipping_price},
-                # x.upload_data.sales_fields.shipping_tax: {"value": shipping_tax},
-                # x.upload_data.sales_fields.gift_wrap_price: {"value": gift_wrap_price},
-                # x.upload_data.sales_fields.gift_wrap_tax: {"value": gift_wrap_tax},
-                # x.upload_data.sales_fields.item_promotion_discount: {"value": item_promotion_discount},
-                # x.upload_data.sales_fields.ship_promotion_discount: {"value": ship_promotion_discount},
-                # x.upload_data.sales_fields.ship_city: {"value": ship_city},
-                # x.upload_data.sales_fields.ship_state: {"value": ship_state},
-                # x.upload_data.sales_fields.ship_postal_code: {"value": ship_postal_code},
-                # x.upload_data.sales_fields.ship_country: {"value": ship_country},
-                # x.upload_data.sales_fields.promotion_ids: {"value": promotion_ids},
-                # x.upload_data.sales_fields.is_business_order: {"value": is_business_order},
-                # x.upload_data.sales_fields.purchase_order_number: {"value": purchase_order_number},
-                # x.upload_data.sales_fields.price_designation: {"value": price_designation},
-                # x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
-                # x.upload_data.sales_fields.signature_confirmation_recommended: { "value": signature_confirmation_recommended},
-
-                # x.upload_data.sales_fields.status: {"value": status},
-                # x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
-                # x.upload_data.sales_fields.commission: {"value": commission}
-
-            }
-            data.append(body)
-            # break
-        print_color(data, color='g')
-        if len(data) > 0:
-            QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.sales_table_id,
-                                                                                        user_token=x.qb_user_token,
-                                                                                        apptoken=x.qb_app_token,
-                                                                                        username=x.username,
-                                                                                        password=x.password,
-                                                                                        filter_val=None,
-                                                                                        update_type='add_record', data=data,
-                                                                                        reference_column=None)
-
-        counter += 1
-        # break
+    # for i in range(0, df.shape[0], 1000):
+    #     new_df = df.loc[i:i + 999]
+    #     for j in range(new_df.shape[0]):
+    #         record_id = str(new_df['RECORD_ID'].iloc[j])
+    #         account_name = new_df['ACCOUNT_NAME'].iloc[j]
+    #         quantity = str(new_df['QUANTITY'].iloc[j])
+    #         purchase_date = new_df['PURCHASE-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
+    #         item_price = new_df['ITEM-PRICE'].iloc[j]
+    #         asin = new_df['ASIN'].iloc[j]
+    #         amazon_order_id = new_df['AMAZON-ORDER-ID'].iloc[j]
+    #         merchant_order_id = new_df['MERCHANT-ORDER-ID'].iloc[j]
+    #         order_status = new_df['ORDER-STATUS'].iloc[j]
+    #         product_name = new_df['PRODUCT-NAME'].iloc[j]
+    #         sku = new_df['SKU'].iloc[j]
+    #         item_status = new_df['ITEM-STATUS'].iloc[j]
+    #
+    #
+    #         body = {
+    #             x.upload_data.sales_fields.record_id: {"value": record_id},
+    #             x.upload_data.sales_fields.account_name: {"value": account_name},
+    #             x.upload_data.sales_fields.quantity: {"value": quantity},
+    #             x.upload_data.sales_fields.purchase_date: {"value": purchase_date},
+    #             x.upload_data.sales_fields.item_price: {"value": item_price},
+    #             x.upload_data.sales_fields.asin: {"value": asin},
+    #             x.upload_data.sales_fields.amazon_order_id: {"value": amazon_order_id},
+    #             x.upload_data.sales_fields.merchant_order_id: {"value": merchant_order_id},
+    #             x.upload_data.sales_fields.order_status: {"value": order_status},
+    #             x.upload_data.sales_fields.product_name: {"value": product_name},
+    #             x.upload_data.sales_fields.sku: {"value": sku},
+    #             x.upload_data.sales_fields.item_status: {"value": item_status}
+    #
+    #
+    #         }
+    #         data.append(body)
+    #         # break
+    #     print_color(data, color='g')
+    #     if len(data) > 0:
+    #         QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.sales_table_id,
+    #                                                                                     user_token=x.qb_user_token,
+    #                                                                                     apptoken=x.qb_app_token,
+    #                                                                                     username=x.username,
+    #                                                                                     password=x.password,
+    #                                                                                     filter_val=None,
+    #                                                                                     update_type='add_record', data=data,
+    #                                                                                     reference_column=None)
+    #
+    #     counter += 1
+    #     # break
 
 
 def upload_sales_fees_data(x, engine, start_date):
