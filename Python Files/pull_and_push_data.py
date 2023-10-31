@@ -353,7 +353,7 @@ def upload_returns_data(x, engine, start_date):
         username=x.qb_username, password=x.qb_password,
         filter_val= "Return",
         reference_column=x.upload_data.sales_fields.order_status,
-        filter_type="GTE"
+        filter_type="EX"
     )
 
     df = pd.read_sql(f'''select
