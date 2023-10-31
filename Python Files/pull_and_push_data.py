@@ -374,11 +374,12 @@ def upload_returns_data(x, engine, start_date):
     # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
     print_color(df.shape[0], color='p')
 
-    data = []
+
     print_color(df.columns, color='y')
     counter = 0
     for i in range(0, df.shape[0], 1000):
         new_df = df.loc[i:i + 999]
+        data = []
         for j in range(new_df.shape[0]):
             record_id = str(new_df['RECORD_ID'].iloc[j])
             account_name = new_df['ACCOUNT_NAME'].iloc[j]
