@@ -66,11 +66,14 @@ from product_data) A
 where ranking = 1;
 
 Drop table if exists quickbase_settlement_order_data;
-create table if not exists quickbase_settlement_order_data(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU))
-select "POSTED" AS STATUS, ACCOUNT_NAME, 
+create table if not exists quickbase_settlement_order_data
+select 
+"POSTED" AS STATUS, ACCOUNT_NAME, 
 date(`SETTLEMENT-START-DATE`) as Start_Date, 
 date(`SETTLEMENT-END-DATE`) as End_Date, 
-`POSTED-DATE`, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN,  `AMOUNT-DESCRIPTION` , 
+`POSTED-DATE`, `SETTLEMENT-ID` ,`TRANSACTION-TYPE`, 
+ifnull(`SHIPMENT-ID`, `ADJUSTMENT-ID`) as Group_ID, 
+ `ORDER-ID`, SKU, ASIN,  `AMOUNT-DESCRIPTION` , 
 sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) as FBA_Fee,
 sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end) as Commission,
 sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) as Principal                
@@ -78,16 +81,17 @@ from settlements A
 left join ygb_unique_account_sku B using(ACCOUNT_NAME, sku)
 where  `SETTLEMENT-START-DATE` >= "2022-01-01"
 and `AMOUNT-DESCRIPTION` in ("FBAPerUnitFulfillmentFee", "Commission", "Principal")
-group by  ACCOUNT_NAME, `ORDER-ID`, SKU;
+group by  ACCOUNT_NAME, `ORDER-ID`, SKU, `TRANSACTION-TYPE`, ifnull(`SHIPMENT-ID`, `ADJUSTMENT-ID`) ;
+
 
 
 
 Drop table if exists quickbase_finance_order_data;
-create table if not exists quickbase_finance_order_data(primary key(ACCOUNT_NAME, `ORDER-ID`, SKU))
+create table if not exists quickbase_finance_order_data
 select STATUS, ACCOUNT_NAME,
  `SETTLEMENT-START-DATE` as  Start_Date,
  `SETTLEMENT-END-DATE` as  End_Date,
- POSTEDDATE as  `POSTED-DATE`, `SETTLEMENT-ID` , `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
+ POSTEDDATE as  `POSTED-DATE`, `SETTLEMENT-ID` , `TRANSACTION-TYPE`, `ORDER-ID`, SKU, ASIN, `AMOUNT-DESCRIPTION` , 
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "FBAPerUnitFulfillmentFee" then AMOUNT else null end) ,0) as FBA_Fee,
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Commission" then AMOUNT else null end),0) as Commission,
 ifnull(sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then AMOUNT else null end) ,0) as Principal      
@@ -111,7 +115,27 @@ A.ACCOUNT_NAME, A.GROUP_ID, A.AMAZONORDERID,
 date(start_date),  date(end_date),
 c.`Total_amount`,d.`TRANSACTION-TYPE`, 
 d.`AMOUNT-TYPE`, d.`AMOUNT-DESCRIPTION`, ifnull(date(POSTEDDATE), date(end_date)), `SELLERSKU`, b.asin) a
-group by  ACCOUNT_NAME,  `ORDER-ID`, SKU;
+group by  ACCOUNT_NAME,  `ORDER-ID`, SKU, `TRANSACTION-TYPE`;
 
 
+drop table if exists combined_quickbase_settlement_order_data;
+create table if not exists combined_quickbase_settlement_order_data
+select row_number() over (partition by ACCOUNT_NAME, `ORDER-ID`, sku, `TRANSACTION-TYPE` order by ACCOUNT_NAME, `ORDER-ID`, sku, `TRANSACTION-TYPE`) as ranking, A.* from
+(select * from quickbase_settlement_order_data
+union
+select * from quickbase_finance_order_data) A;
+
+
+-- select * from settlements  where `SETTLEMENT-ID` = "17430134561"
+-- select * from quickbase_settlement_order_data  where `ORDER-ID` = "114-7480084-4368216" and  `SETTLEMENT-START-DATE` >= "2022-01-01"
+-- and `AMOUNT-DESCRIPTION` in ("FBAPerUnitFulfillmentFee", "Commission", "Principal");
+-- select * from finances   where `AMAZONORDERID` = "114-7480084-4368216";
+--  select * from combined_quickbase_settlement_order_data  where `ORDER-ID` = "114-7480084-4368216";
+--  
+
+-- select * from finances limit 100;
+-- select * from quickbase_settlement_order_data limit 100;
+--   select * from quickbase_settlement_order_data where `SETTLEMENT-ID`  = "16764106551"
+--             union
+--             select * from quickbase_finance_order_data where  `SETTLEMENT-ID`  = "16764106551"
 

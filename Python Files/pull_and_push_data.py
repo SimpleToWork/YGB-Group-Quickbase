@@ -205,6 +205,7 @@ def upload_sales_data(x, engine, start_date):
             print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
         else:
             query = f'''select
+            row_number() over (partition by A.ACCOUNT_NAME,  `AMAZON-ORDER-ID`, A.SKU, `ORDER-STATUS` order by A.ACCOUNT_NAME,  `AMAZON-ORDER-ID`, A.SKU, `ORDER-STATUS`) as Ranking,
             A.ACCOUNT_NAME, QUANTITY, `PURCHASE-DATE`,`ITEM-PRICE`, A.ASIN, `AMAZON-ORDER-ID`, `MERCHANT-ORDER-ID`,
             `ORDER-STATUS`, `FULFILLMENT-CHANNEL`, `SALES-CHANNEL`,`ORDER-CHANNEL`, `SHIP-SERVICE-LEVEL`, `PRODUCT-NAME`,
             A.SKU, `ITEM-STATUS`,CURRENCY,`ITEM-TAX`, `SHIPPING-PRICE`, `SHIPPING-TAX`, `GIFT-WRAP-PRICE`, `GIFT-WRAP-TAX`,
@@ -266,10 +267,11 @@ def upload_sales_data(x, engine, start_date):
                 price_designation = df['PRICE-DESIGNATION'].iloc[j]
                 is_transparency = df['IS-TRANSPARENCY'].iloc[j]
                 signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
-                status = df['STATUS'].iloc[j]
-                fba_fee = df['FBA_FEE'].iloc[j]
-                commission = df['COMMISSION'].iloc[j]
-                principal = df['PRINCIPAL'].iloc[j]
+                # status = df['STATUS'].iloc[j]
+                # fba_fee = df['FBA_FEE'].iloc[j]
+                # commission = df['COMMISSION'].iloc[j]
+                # principal = df['PRINCIPAL'].iloc[j]
+                ranking = df['RANKING'].iloc[j]
 
                 body = {
                     x.upload_data.sales_fields.record_id: {"value": record_id},
@@ -306,6 +308,8 @@ def upload_sales_data(x, engine, start_date):
                     x.upload_data.sales_fields.price_designation: {"value": price_designation},
                     x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
                     x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
+                    x.upload_data.sales_fields.ranking: {"value": ranking},
+
 
                     # x.upload_data.sales_fields.status: {"value": status},
                     # x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
@@ -357,6 +361,7 @@ def upload_returns_data(x, engine, start_date):
     )
 
     df = pd.read_sql(f'''select
+    row_number() over (partition by A.ACCOUNT_NAME, A.`ORDER-ID`, A.SKU order by A.ACCOUNT_NAME, A.`ORDER-ID`, A.SKU) as Ranking,
         A.ACCOUNT_NAME,  QUANTITY, `RETURN-DATE` as `PURCHASE-DATE`,null as `ITEM-PRICE`, ASIN, A.`ORDER-ID` as `AMAZON-ORDER-ID`,A.`ORDER-ID` as `MERCHANT-ORDER-ID`,
         "Return" as `ORDER-STATUS`, `PRODUCT-NAME`, A.SKU, A.STATUS as `ITEM-STATUS`
         from fba_returns A
@@ -393,6 +398,7 @@ def upload_returns_data(x, engine, start_date):
             product_name = new_df['PRODUCT-NAME'].iloc[j]
             sku = new_df['SKU'].iloc[j]
             item_status = new_df['ITEM-STATUS'].iloc[j]
+            ranking = new_df['RANKING'].iloc[j]
 
 
             body = {
@@ -407,7 +413,8 @@ def upload_returns_data(x, engine, start_date):
                 x.upload_data.sales_fields.order_status: {"value": order_status},
                 x.upload_data.sales_fields.product_name: {"value": product_name},
                 x.upload_data.sales_fields.sku: {"value": sku},
-                x.upload_data.sales_fields.item_status: {"value": item_status}
+                x.upload_data.sales_fields.item_status: {"value": item_status},
+                x.upload_data.sales_fields.ranking: {"value": ranking}
 
 
             }
@@ -474,9 +481,7 @@ def upload_sales_fees_data(x, engine, start_date):
     for each_settlement in settlement_ids_to_import:
         print_color(each_settlement, color='b')
         script = f'''
-            select * from quickbase_settlement_order_data where `SETTLEMENT-ID`  = "{each_settlement}"
-            union
-            select * from quickbase_finance_order_data where  `SETTLEMENT-ID`  = "{each_settlement}"
+            select * from combined_quickbase_settlement_order_data where `SETTLEMENT-ID`  = "{each_settlement}"
              '''
         print_color(script, color='y')
         df  = pd.read_sql(script, con=engine)
