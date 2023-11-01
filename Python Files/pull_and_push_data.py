@@ -711,8 +711,8 @@ def upload_settlement_fees(x, engine, start_date):
             `TOTAL-AMOUNT`, `TRANSACTION-TYPE`, 
             `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin, sum(`AMOUNT`)  as AMOUNT from settlements A
             left join ygb_product_account_asin B using(account_name, sku)
-            where `SETTLEMENT-START-DATE` >= "{start_date}"
-            and `SETTLEMENT-ID` = "{each_settlement}"
+           --  where `SETTLEMENT-START-DATE` >= "{start_date}"
+            where `SETTLEMENT-ID` = "{each_settlement}"
             group by 
             ACCOUNT_NAME, `SETTLEMENT-ID`, 
             `SETTLEMENT-START-DATE`, `SETTLEMENT-END-DATE`,
@@ -789,7 +789,7 @@ def upload_settlement_fees(x, engine, start_date):
                     filter_val=None, update_type='add_record', data=qb_data, reference_column=None)
 
                 print_color(f'Batch {counter} Uploaded', color='G')
-            counter +=1
+            counter += 1
 
         # break
 
