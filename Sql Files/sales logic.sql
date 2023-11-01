@@ -100,6 +100,7 @@ left join (select * from combined_quickbase_settlement_order_data where `transac
 
 
 
+
 -- select * from ygb_quickbase_final_assigned_returns ;
 -- select * from combined_quickbase_settlement_order_data where `transaction-type` = "return";
 -- select * from ygb_quickbase_final_assigned_returns where `PURCHASE-DATE` >= "2023-01-01";
