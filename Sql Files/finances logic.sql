@@ -120,10 +120,15 @@ sum(case when  `AMOUNT-DESCRIPTION` = "Principal" then `QUANTITY-PURCHASED`  els
 from settlements A
 left join ygb_unique_account_sku B using(ACCOUNT_NAME, sku)
 where  `SETTLEMENT-START-DATE` >= "2022-01-01"
-and `AMOUNT-DESCRIPTION` in ("FBAPerUnitFulfillmentFee", "Commission", "Principal")
+and (`AMOUNT-DESCRIPTION` in ("FBAPerUnitFulfillmentFee", "Commission", "Principal")
+or 
+(`TRANSACTION-TYPE` = "Order" and `AMOUNT-DESCRIPTION` = "MarketplaceFacilitatorTax-Principal")
+)
+
 group by  ACCOUNT_NAME, `ORDER-ID`, SKU, `TRANSACTION-TYPE`, ifnull(`SHIPMENT-ID`, `ADJUSTMENT-ID`);
 -- case when `TRANSACTION-TYPE` in  ("Refund","Chargeback Refund") then id else `SHIPMENT-ID` end ;
 
+create index order_sku on quickbase_settlement_order_data(ACCOUNT_NAME,  `ORDER-ID`, SKU);
 
 
 Drop table if exists quickbase_finance_order_data;
@@ -189,7 +194,7 @@ group by  ACCOUNT_NAME,  `ORDER-ID`, SKU, `TRANSACTION-TYPE`;
 
 drop table if exists combined_quickbase_settlement_order_data;
 create table if not exists combined_quickbase_settlement_order_data
-select row_number() over (partition by ACCOUNT_NAME, `ORDER-ID`, sku, `TRANSACTION-TYPE` order by ACCOUNT_NAME, `ORDER-ID`, sku, `TRANSACTION-TYPE`) as ranking, A.* from
+select row_number() over (partition by ACCOUNT_NAME, `ORDER-ID`, sku, `TRANSACTION-TYPE`, Group_ID order by ACCOUNT_NAME, `ORDER-ID`, sku, `TRANSACTION-TYPE`) as ranking, A.* from
 (select * from quickbase_settlement_order_data
 union
 select * from quickbase_finance_order_data) A;
@@ -197,6 +202,10 @@ select * from quickbase_finance_order_data) A;
 update combined_quickbase_settlement_order_data set `TRANSACTION-TYPE` = "Shipped" where  `TRANSACTION-TYPE`  = "Order";
 update combined_quickbase_settlement_order_data set `TRANSACTION-TYPE` = "Return" where  `TRANSACTION-TYPE`  = "Refund";
 update combined_quickbase_settlement_order_data set `TRANSACTION-TYPE` = "Return" where  `TRANSACTION-TYPE`  = "Chargeback Refund";
+
+update combined_quickbase_settlement_order_data set FBA_Fee = 0.00 where FBA_Fee is null;
+update combined_quickbase_settlement_order_data set Commission = 0.00 where Commission is null;
+update combined_quickbase_settlement_order_data set Principal = 0.00 where Principal is null;
 
 
 
@@ -216,6 +225,7 @@ A.SKU, `ITEM-STATUS`,CURRENCY,`ITEM-TAX`, `SHIPPING-PRICE`, `SHIPPING-TAX`, `GIF
 `IS-TRANSPARENCY`, `SIGNATURE-CONFIRMATION-RECOMMENDED`
 from all_orders A
 where  `PURCHASE-DATE` >= "2021-01-01" 
+-- and `AMAZON-ORDER-ID`= "111-2301076-9064201"
 group by  ACCOUNT_NAME,  `AMAZON-ORDER-ID`, SKU, `ORDER-STATUS`, ifnull(round(`ITEM-PRICE` / QUANTITY,2),`ITEM-PRICE` ), 
 `ORDER-STATUS`, `ITEM-STATUS`;
 
