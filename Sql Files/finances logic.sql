@@ -229,6 +229,8 @@ where  `PURCHASE-DATE` >= "2021-01-01"
 group by  ACCOUNT_NAME,  `AMAZON-ORDER-ID`, SKU, `ORDER-STATUS`, ifnull(round(`ITEM-PRICE` / QUANTITY,2),`ITEM-PRICE` ), 
 `ORDER-STATUS`, `ITEM-STATUS`;
 
+create index unique_level on ygb_quickbase_order_data( ACCOUNT_NAME,  `AMAZON-ORDER-ID`, SKU, `ITEM-STATUS`,`ITEM-PRICE`);
+
 
 DROP TABLE if exists ygb_quickbase_order_unit_price;
 create table if not exists ygb_quickbase_order_unit_price(primary key( ACCOUNT_NAME, `ORDER-ID`, sku))
@@ -272,3 +274,4 @@ ygb_quickbase_number_table B
 on A.Order_Line_Units >= B.number;
 
 create index unique_detail on ygb_quickbase_settlement_returns (ACCOUNT_NAME, `ORDER-ID`, SKU);
+

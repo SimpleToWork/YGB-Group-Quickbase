@@ -1,7 +1,5 @@
 use ybg_group_amazon_seller_central;
 
-create index unique_level on ygb_quickbase_order_data( ACCOUNT_NAME,  `AMAZON-ORDER-ID`, SKU, `ITEM-STATUS`,`ITEM-PRICE`);
-
 
 drop table if exists ygb_quickbase_fulfilled_order_data;
 create table if not exists ygb_quickbase_fulfilled_order_data (primary key( ACCOUNT_NAME,  `AMAZON-ORDER-ID`, SKU, `ITEM-STATUS`,`ITEM-PRICE`, `SHIPMENT-ID`))
