@@ -78,6 +78,11 @@ and A.sku = B.sku and A.`ORDER-STATUS` = B.`TRANSACTION-TYPE` and  A.`SHIPMENT-I
 -- and `SHIPMENT-ID` is not null
 -- and FBA_Fee is null;
 
+update ygb_quickbase_final_assigned_orders set FBA_Fee = 0.00 where FBA_Fee is null;
+update ygb_quickbase_final_assigned_orders set Commission = 0.00 where Commission is null;
+update ygb_quickbase_final_assigned_orders set Principal = 0.00 where Principal is null;
+
+
 
 -- ----------------------------------------------------------------------------------------
 -- Returns ---------------------------------------------------------------------------
