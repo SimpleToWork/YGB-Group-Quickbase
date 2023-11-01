@@ -17,17 +17,10 @@ row_number() over (partition by A.ACCOUNT_NAME,  `AMAZON-ORDER-ID`, A.SKU, `ORDE
 a.* , b.`SHIPMENT-ID`, b.Quantity AS fulfilled_Quantity
 from ygb_quickbase_order_data A 
 left join ygb_quickbase_fulfilled_order_data B on A.ACCOUNT_NAME = B.ACCOUNT_NAME and A.`AMAZON-ORDER-ID` = B.`AMAZON-ORDER-ID` and A.SKU = B.SKU and A. `ITEM-STATUS` = B. `ITEM-STATUS` and A.`UNIT-PRICE` = B.`ITEM-PRICE`
-where date(A.`PURCHASE-DATE`) >= "2023-01-01"
--- where A.`AMAZON-ORDER-ID` = "111-2301076-9064201"
-;
--- where A.`ITEM-STATUS` = "shipped";
+where date(A.`PURCHASE-DATE`) >= "2023-01-01";
 
 create index unique_lookup on ygb_quickbase_assigned_order_data(ACCOUNT_NAME, `AMAZON-ORDER-ID`, SKU);
 
-
--- select * from ygb_quickbase_assigned_order_data  limit 100;
--- Alter table combined_quickbase_settlement_order_data modify Quantity int;
--- Alter table ygb_quickbase_assigned_order_data modify Quantity int;
 
 drop table if exists ygb_quickbase_assigned_order_data_missing_shipments;
 create table if not exists ygb_quickbase_assigned_order_data_missing_shipments(primary key(id, ranking))
@@ -41,7 +34,6 @@ and a.`SHIPMENT-ID` is null and date(`PURCHASE-DATE`) >= "2023-01-01") B on A.AC
 and `TRANSACTION-TYPE` ="Shipped";
 
 create index id on ygb_quickbase_assigned_order_data_missing_shipments(id);
-
 set @max_id = (select max(id) from ygb_quickbase_assigned_order_data);
 
 drop table if exists ygb_quickbase_assigned_orders_to_replace;
@@ -101,9 +93,16 @@ select A.*, B.Group_ID,  B.Order_Line_Units from ygb_quickbase_return_data A lef
 on A.ACCOUNT_NAME = B.ACCOUNT_NAME and A.`Order-ID` = B.`Order-ID` and A.sku = B.sku and A.Ranking = B.new_ranking
 where B.Group_ID is not null;
 
+drop table if exists ygb_quickbase_final_assigned_returns;
+create table if not exists ygb_quickbase_final_assigned_returns
+select A.*, B.FBA_Fee, B.Commission, B.Principal from ygb_quickbase_assigned_return_data A
+left join (select * from combined_quickbase_settlement_order_data where `transaction-type` = "return") B on A.ACCOUNT_NAME = B.ACCOUNT_NAME and A.`ORDER-ID` = B.`ORDER-ID` and A.SKU = B.SKU and A.Group_ID = B.Group_ID;
 
 
+-- select * from ygb_quickbase_final_assigned_returns ;
+-- select * from combined_quickbase_settlement_order_data where `transaction-type` = "return";
 
+-- select * from ygb_quickbase_final_assigned_returns where `PURCHASE-DATE` >= "2023-01-01";
  
 
 
