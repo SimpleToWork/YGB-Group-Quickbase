@@ -379,7 +379,7 @@ def upload_returns_data(x, engine, start_date):
             item_status = new_df['ITEM-STATUS'].iloc[j]
             ranking = str(new_df['RANKING'].iloc[j])
             shipment_id = new_df['GROUP_ID'].iloc[j]
-            fba_fees = new_df['FBA_FEE'].iloc[j]
+            fba_fee = new_df['FBA_FEE'].iloc[j]
             commission = new_df['COMMISSION'].iloc[j]
             principal = new_df['PRINCIPAL'].iloc[j]
 
@@ -399,7 +399,7 @@ def upload_returns_data(x, engine, start_date):
                 x.upload_data.sales_fields.ranking: {"value": ranking},
                 x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
                 x.upload_data.sales_fields.shipping_price: {"value": principal},
-                x.upload_data.sales_fields.fba_fees: {"value": fba_fees},
+                x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
                 x.upload_data.sales_fields.commission: {"value": commission}
             }
             data.append(body)
