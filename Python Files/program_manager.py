@@ -54,7 +54,7 @@ def run_program(environment):
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
-    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='sales logic.sql')
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='sales logic.sql')
 
 
 
