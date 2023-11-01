@@ -50,13 +50,14 @@ def run_program(environment):
     x = ProgramCredentials(environment)
     sql_folder = f'{x.project_folder}\\Sql Files'
     start_date = "2023-01-01"
+    po_start_date = "2022-11-01"
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
 
     # upload_product_data(x, engine)
-    upload_sales_data(x, engine, start_date)
-    upload_returns_data(x, engine, start_date)
+    # upload_sales_data(x, engine, start_date)
+    # upload_returns_data(x, engine, start_date)
 
     upload_sales_fees_data(x, engine, start_date)
     #
@@ -68,7 +69,7 @@ def run_program(environment):
     # upload_shipment_tracking(x, engine)
     #
     # upload_inventory_data(x, engine)
-    # upload_factory_pos(x, engine)
+    # upload_factory_pos(x, engine, po_start_date)
     # import_factory_pos(x, engine)
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='ledger logic.sql')
     #

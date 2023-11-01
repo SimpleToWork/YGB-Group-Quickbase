@@ -204,19 +204,8 @@ def upload_sales_data(x, engine, start_date):
         if date_to_recruit in recruited_sales_dates:
             print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
         else:
-            query = f'''select
-            row_number() over (partition by A.ACCOUNT_NAME,  `AMAZON-ORDER-ID`, A.SKU, `ORDER-STATUS` order by A.ACCOUNT_NAME,  `AMAZON-ORDER-ID`, A.SKU, `ORDER-STATUS`) as Ranking,
-            A.ACCOUNT_NAME, QUANTITY, `PURCHASE-DATE`,`ITEM-PRICE`, A.ASIN, `AMAZON-ORDER-ID`, `MERCHANT-ORDER-ID`,
-            `ORDER-STATUS`, `FULFILLMENT-CHANNEL`, `SALES-CHANNEL`,`ORDER-CHANNEL`, `SHIP-SERVICE-LEVEL`, `PRODUCT-NAME`,
-            A.SKU, `ITEM-STATUS`,CURRENCY,`ITEM-TAX`, `SHIPPING-PRICE`, `SHIPPING-TAX`, `GIFT-WRAP-PRICE`, `GIFT-WRAP-TAX`,
-            `ITEM-PROMOTION-DISCOUNT`, `SHIP-PROMOTION-DISCOUNT`, `SHIP-CITY`, `SHIP-STATE`, `SHIP-POSTAL-CODE`,
-            `SHIP-COUNTRY`, `PROMOTION-IDS`, `IS-BUSINESS-ORDER`, `PURCHASE-ORDER-NUMBER`, `PRICE-DESIGNATION`,
-            `IS-TRANSPARENCY`, `SIGNATURE-CONFIRMATION-RECOMMENDED`, ifnull(b.STATUS, c.STATUS) as STATUS,  ifnull(B.FBA_Fee, C.FBA_Fee) as FBA_Fee,
-             ifnull(B.Commission, C.Commission) as Commission, ifnull(B.Principal, C.Principal) as Principal
-            from all_orders A
-            left join quickbase_settlement_order_data B on A.ACCOUNT_NAME = B.ACCOUNT_NAME and A.`AMAZON-ORDER-ID` = B.`ORDER-ID` and A.SKU = b.SKU
-            left join quickbase_finance_order_data C on A.ACCOUNT_NAME = C.ACCOUNT_NAME and A.`AMAZON-ORDER-ID` = C.`ORDER-ID` and A.SKU = C.SKU
-             where  `PURCHASE-DATE` >= "{date_to_recruit}" and `PURCHASE-DATE` < "{next_date_to_recruit}";
+            query = f'''select * from ygb_quickbase_assigned_order_data
+             where `PURCHASE-DATE` >= "{date_to_recruit}" and `PURCHASE-DATE` < "{next_date_to_recruit}";
                 '''
             print_color(query, color='y')
             df = pd.read_sql(query, con=engine)
@@ -250,13 +239,13 @@ def upload_sales_data(x, engine, start_date):
                 sku = df['SKU'].iloc[j]
                 item_status = df['ITEM-STATUS'].iloc[j]
                 currency = df['CURRENCY'].iloc[j]
-                item_tax = df['ITEM-TAX'].iloc[j]
+                item_tax = str(df['ITEM-TAX'].iloc[j])
                 shipping_price = str(df['SHIPPING-PRICE'].iloc[j])
-                shipping_tax = df['SHIPPING-TAX'].iloc[j]
-                gift_wrap_price = df['GIFT-WRAP-PRICE'].iloc[j]
-                gift_wrap_tax = df['GIFT-WRAP-TAX'].iloc[j]
-                item_promotion_discount = df['ITEM-PROMOTION-DISCOUNT'].iloc[j]
-                ship_promotion_discount = df['SHIP-PROMOTION-DISCOUNT'].iloc[j]
+                shipping_tax = str(df['SHIPPING-TAX'].iloc[j])
+                gift_wrap_price = str(df['GIFT-WRAP-PRICE'].iloc[j])
+                gift_wrap_tax = str(df['GIFT-WRAP-TAX'].iloc[j])
+                item_promotion_discount = str(df['ITEM-PROMOTION-DISCOUNT'].iloc[j])
+                ship_promotion_discount = str(df['SHIP-PROMOTION-DISCOUNT'].iloc[j])
                 ship_city = df['SHIP-CITY'].iloc[j]
                 ship_state = df['SHIP-STATE'].iloc[j]
                 ship_postal_code = df['SHIP-POSTAL-CODE'].iloc[j]
@@ -271,7 +260,10 @@ def upload_sales_data(x, engine, start_date):
                 # fba_fee = df['FBA_FEE'].iloc[j]
                 # commission = df['COMMISSION'].iloc[j]
                 # principal = df['PRINCIPAL'].iloc[j]
-                ranking = df['RANKING'].iloc[j]
+                ranking = str(df['RANKING'].iloc[j])
+                shipment_id = df['SHIPMENT-ID'].iloc[j]
+
+
 
                 body = {
                     x.upload_data.sales_fields.record_id: {"value": record_id},
@@ -309,6 +301,7 @@ def upload_sales_data(x, engine, start_date):
                     x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
                     x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
                     x.upload_data.sales_fields.ranking: {"value": ranking},
+                    x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
 
 
                     # x.upload_data.sales_fields.status: {"value": status},
@@ -360,12 +353,8 @@ def upload_returns_data(x, engine, start_date):
         filter_type="EX"
     )
 
-    df = pd.read_sql(f'''select
-    row_number() over (partition by A.ACCOUNT_NAME, A.`ORDER-ID`, A.SKU order by A.ACCOUNT_NAME, A.`ORDER-ID`, A.SKU) as Ranking,
-        A.ACCOUNT_NAME,  QUANTITY, `RETURN-DATE` as `PURCHASE-DATE`,null as `ITEM-PRICE`, ASIN, A.`ORDER-ID` as `AMAZON-ORDER-ID`,A.`ORDER-ID` as `MERCHANT-ORDER-ID`,
-        "Return" as `ORDER-STATUS`, `PRODUCT-NAME`, A.SKU, A.STATUS as `ITEM-STATUS`
-        from fba_returns A
-        where `RETURN-DATE` >= "{start_date}";
+    df = pd.read_sql(f'''select * from ygb_quickbase_assigned_return_data 
+        where `PURCHASE-DATE` >= "{start_date}";
         ''', con=engine)
 
     df.columns = [x.upper() for x in df.columns]
@@ -392,14 +381,14 @@ def upload_returns_data(x, engine, start_date):
             purchase_date = new_df['PURCHASE-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
             item_price = new_df['ITEM-PRICE'].iloc[j]
             asin = new_df['ASIN'].iloc[j]
-            amazon_order_id = new_df['AMAZON-ORDER-ID'].iloc[j]
+            amazon_order_id = new_df['ORDER-ID'].iloc[j]
             merchant_order_id = new_df['MERCHANT-ORDER-ID'].iloc[j]
             order_status = new_df['ORDER-STATUS'].iloc[j]
             product_name = new_df['PRODUCT-NAME'].iloc[j]
             sku = new_df['SKU'].iloc[j]
             item_status = new_df['ITEM-STATUS'].iloc[j]
-            ranking = new_df['RANKING'].iloc[j]
-
+            ranking = str(new_df['RANKING'].iloc[j])
+            shipment_id = new_df['GROUP_ID'].iloc[j]
 
             body = {
                 x.upload_data.sales_fields.record_id: {"value": record_id},
@@ -414,8 +403,8 @@ def upload_returns_data(x, engine, start_date):
                 x.upload_data.sales_fields.product_name: {"value": product_name},
                 x.upload_data.sales_fields.sku: {"value": sku},
                 x.upload_data.sales_fields.item_status: {"value": item_status},
-                x.upload_data.sales_fields.ranking: {"value": ranking}
-
+                x.upload_data.sales_fields.ranking: {"value": ranking},
+                x.upload_data.sales_fields.shipment_id: {"value": shipment_id}
 
             }
             data.append(body)
@@ -512,11 +501,13 @@ def upload_sales_fees_data(x, engine, start_date):
                 start_date = new_df['START_DATE'].iloc[j].strftime('%Y-%m-%d')
                 end_date = new_df['END_DATE'].iloc[j].strftime('%Y-%m-%d')
                 posted_date =  new_df['POSTED-DATE'].iloc[j].strftime('%Y-%m-%d')
-
                 fba_fee = str(new_df['FBA_FEE'].iloc[j]).replace("nan","0")
                 commission = str(new_df['COMMISSION'].iloc[j]).replace("nan","0")
                 asin = new_df['ASIN'].iloc[j]
                 related_product = str(new_df['RECORD_ID'].iloc[j]).replace("nan","")
+                transaction_type = new_df['TRANSACTION-TYPE'].iloc[j]
+                ranking = str(new_df['RANKING'].iloc[j])
+                group_id =str(new_df['GROUP_ID'].iloc[j]).replace("nan","")
 
                 body = {
 
@@ -533,6 +524,10 @@ def upload_sales_fees_data(x, engine, start_date):
                     x.upload_data.order_fees_fields.start_date: {"value": start_date},
                     x.upload_data.order_fees_fields.end_date: {"value": end_date},
                     x.upload_data.order_fees_fields.posted_date: {"value": posted_date},
+
+                    x.upload_data.order_fees_fields.transaction_type: {"value": transaction_type},
+                    x.upload_data.order_fees_fields.group_id: {"value": group_id},
+                    x.upload_data.order_fees_fields.ranking: {"value": ranking},
 
                 }
                 qb_data.append(body)
@@ -1221,7 +1216,7 @@ def upload_inventory_data(x, engine):
             data=data, reference_column=None)
 
 
-def upload_factory_pos(x, engine):
+def upload_factory_pos(x, engine, start_date):
     quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
                                                                app_id=x.qb_app_id).get_qb_table_records(
         table_id=x.product_table_id,
@@ -1265,6 +1260,8 @@ def upload_factory_pos(x, engine):
 
     completed_df.columns = columns
     print_color(completed_df, color='r')
+
+
     completed_df.insert(0, "PO Type", "Completed")
 
     print_color(completed_df.columns, color='r')
@@ -1278,6 +1275,8 @@ def upload_factory_pos(x, engine):
 
     new_df = pd.concat([completed_df, po_df], sort=False)
     new_df.columns = [x.upper() for x in new_df.columns]
+
+    # new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\po_data.csv', index=False)
 
     new_df = new_df.dropna(subset=['QTY'])
     new_df = new_df[(new_df['QTY'] != "")]
@@ -1307,7 +1306,14 @@ def upload_factory_pos(x, engine):
     new_df['DATE PAID'] = pd.to_datetime(new_df['DATE PAID'])
     new_df['READY'] = new_df['COMPLETION DATE'].apply(lambda x: True if x.isalpha() else False)
     print_color( new_df['ETD'].unique(), color='p')
-    new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\completed_pos.csv', index=False)
+
+
+    print_color(new_df.shape[0], color='p')
+    start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    new_df = new_df[(new_df['ETA'] >= f"{start_date}") | (new_df['PO TYPE'] == "Open POs")]
+    print_color(new_df.shape[0], color='p')
+
+    # new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\completed_pos.csv', index=False)
 
     for i in range(new_df.shape[0]):
         value = new_df['COMPLETION DATE'].iloc[i]
@@ -1397,7 +1403,7 @@ def upload_factory_pos(x, engine):
 
         # date_last_paid = str(new_df['DATE PAID'].iloc[i])
 
-        container_number =  str(new_df['CONTAINER #'].iloc[i])
+        container_number = str(new_df['CONTAINER #'].iloc[i])
         production_status = str(new_df['PRODUCTION STATUS'].iloc[i])
         shipping_to = str(new_df['SHIPPING TO'].iloc[i])
         shipping_to_location = str(new_df['SHIPPING TO LOCATION'].iloc[i])
