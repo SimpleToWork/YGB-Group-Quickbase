@@ -258,8 +258,8 @@ def upload_sales_data(x, engine, start_date):
                 is_transparency = df['IS-TRANSPARENCY'].iloc[j]
                 signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
                 # status = df['STATUS'].iloc[j]
-                fba_fee = df['FBA_FEE'].iloc[j]
-                commission = df['COMMISSION'].iloc[j]
+                fba_fee = str(df['FBA_FEE'].iloc[j])
+                commission = str(df['COMMISSION'].iloc[j])
                 principal = df['PRINCIPAL'].iloc[j]
                 ranking = str(df['RANKING'].iloc[j])
                 shipment_id = df['SHIPMENT-ID'].iloc[j]
