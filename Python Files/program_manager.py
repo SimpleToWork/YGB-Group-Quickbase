@@ -60,12 +60,12 @@ def run_program(environment):
 
     # upload_product_data(x, engine)
     # upload_sales_data(x, engine, start_date)
-    upload_returns_data(x, engine, start_date)
+    # upload_returns_data(x, engine, start_date)
 
     # upload_sales_fees_data(x, engine, start_date)
-    #
-    # upload_settlement_fees(x, engine)
-    # upload_finance_fees(x, engine)
+
+    upload_settlement_fees(x, engine, start_date)
+    upload_finance_fees(x, engine)
 
     # upload_shipment_data(x,engine)
     # upload_shipment_detail_data(x, engine)

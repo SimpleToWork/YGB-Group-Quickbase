@@ -656,7 +656,7 @@ def upload_finance_fees(x, engine):
         # break
 
 
-def upload_settlement_fees(x, engine):
+def upload_settlement_fees(x, engine, start_date):
     quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
                                                                app_id=x.qb_app_id).get_qb_table_records(
         table_id=x.product_table_id,
@@ -698,11 +698,10 @@ def upload_settlement_fees(x, engine):
     print_color(imported_settlements, color='b')
 
 
-    settlement_ids = pd.read_sql(f'Select distinct `SETTLEMENT-ID` from settlements   where `SETTLEMENT-START-DATE` >= "2022-01-01"', con=engine)['SETTLEMENT-ID'].unique().tolist()
-    # print_color(settlement_ids, color='b')
-    settlement_ids_to_import = [x for x in settlement_ids if str(x) not in imported_settlements_ids]
-    # settlement_ids = ['17750287041']
+    settlement_ids = pd.read_sql(f'''Select distinct `SETTLEMENT-ID` from settlements
+            where `SETTLEMENT-START-DATE` >= "{start_date}"''', con=engine)['SETTLEMENT-ID'].unique().tolist()
 
+    settlement_ids_to_import = [x for x in settlement_ids if str(x) not in imported_settlements_ids]
     print_color(imported_settlements_ids, color='b')
     print_color(settlement_ids_to_import, color='b')
 
@@ -712,7 +711,7 @@ def upload_settlement_fees(x, engine):
             `TOTAL-AMOUNT`, `TRANSACTION-TYPE`, 
             `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin, sum(`AMOUNT`)  as AMOUNT from settlements A
             left join ygb_product_account_asin B using(account_name, sku)
-            where `SETTLEMENT-START-DATE` >= "2022-01-01"
+            where `SETTLEMENT-START-DATE` >= "{start_date}"
             and `SETTLEMENT-ID` = "{each_settlement}"
             group by 
             ACCOUNT_NAME, `SETTLEMENT-ID`, 
@@ -726,8 +725,9 @@ def upload_settlement_fees(x, engine):
         df['SKU'] = df['SKU'].str.upper()
 
         print_color(f'Dataframe Size {df.shape[0]}', color='b')
-        df = df.merge(reference_df, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
-                      right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
+        df = df.merge(reference_df, how='left',
+              left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
+              right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
         print_color(f'Dataframe Size {df.shape[0]}', color='b')
         # df = df[df['RECORD_ID'].isnull()]
         df['RECORD_ID'] = df['RECORD_ID'].apply(lambda x: "" if str(x) =="nan" else x)
@@ -769,7 +769,6 @@ def upload_settlement_fees(x, engine):
                     x.upload_data.settlement_fees_fields.total_amount: {"value": total_amount},
                     x.upload_data.settlement_fees_fields.status: {"value": status},
                     x.upload_data.settlement_fees_fields.currency: {"value": currency},
-
                     # x.upload_data.settlement_fees_fields.order_id: {"value": order_id},
                     x.upload_data.settlement_fees_fields.transaction_type: {"value": transaction_type},
                     x.upload_data.settlement_fees_fields.fee_type: {"value": fee_type},
