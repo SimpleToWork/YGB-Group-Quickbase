@@ -99,9 +99,9 @@ select A.*, B.FBA_Fee, B.Commission, B.Principal from ygb_quickbase_assigned_ret
 left join (select * from combined_quickbase_settlement_order_data where `transaction-type` = "return") B on A.ACCOUNT_NAME = B.ACCOUNT_NAME and A.`ORDER-ID` = B.`ORDER-ID` and A.SKU = B.SKU and A.Group_ID = B.Group_ID;
 
 
+
 -- select * from ygb_quickbase_final_assigned_returns ;
 -- select * from combined_quickbase_settlement_order_data where `transaction-type` = "return";
-
 -- select * from ygb_quickbase_final_assigned_returns where `PURCHASE-DATE` >= "2023-01-01";
  
 
