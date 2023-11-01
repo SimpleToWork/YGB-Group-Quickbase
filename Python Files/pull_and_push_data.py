@@ -345,9 +345,8 @@ def upload_returns_data(x, engine, start_date):
         filter_type="EX"
     )
 
-    df = pd.read_sql(f'''select * from ygb_quickbase_assigned_return_data 
-        where `PURCHASE-DATE` >= "{start_date}";
-        ''', con=engine)
+    df = pd.read_sql(f'''select * from ygb_quickbase_final_assigned_returns where `PURCHASE-DATE` >= "{start_date}";''',
+                     con=engine)
 
     df.columns = [x.upper() for x in df.columns]
     df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
@@ -359,9 +358,8 @@ def upload_returns_data(x, engine, start_date):
                   right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
     # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
     print_color(df.shape[0], color='p')
-
-
     print_color(df.columns, color='y')
+
     counter = 0
     for i in range(0, df.shape[0], 1000):
         new_df = df.loc[i:i + 999]
@@ -381,6 +379,9 @@ def upload_returns_data(x, engine, start_date):
             item_status = new_df['ITEM-STATUS'].iloc[j]
             ranking = str(new_df['RANKING'].iloc[j])
             shipment_id = new_df['GROUP_ID'].iloc[j]
+            fba_fees = new_df['FBA_FEE'].iloc[j]
+            commission = new_df['COMMISSION'].iloc[j]
+            principal = new_df['PRINCIPAL'].iloc[j]
 
             body = {
                 x.upload_data.sales_fields.record_id: {"value": record_id},
@@ -396,21 +397,23 @@ def upload_returns_data(x, engine, start_date):
                 x.upload_data.sales_fields.sku: {"value": sku},
                 x.upload_data.sales_fields.item_status: {"value": item_status},
                 x.upload_data.sales_fields.ranking: {"value": ranking},
-                x.upload_data.sales_fields.shipment_id: {"value": shipment_id}
-
+                x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
+                x.upload_data.sales_fields.shipping_price: {"value": principal},
+                x.upload_data.sales_fields.fba_fees: {"value": fba_fees},
+                x.upload_data.sales_fields.commission: {"value": commission}
             }
             data.append(body)
-            # break
+
         print_color(data, color='g')
         if len(data) > 0:
             QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.sales_table_id,
-                                                                                        user_token=x.qb_user_token,
-                                                                                        apptoken=x.qb_app_token,
-                                                                                        username=x.username,
-                                                                                        password=x.password,
-                                                                                        filter_val=None,
-                                                                                        update_type='add_record', data=data,
-                                                                                        reference_column=None)
+                user_token=x.qb_user_token,
+                apptoken=x.qb_app_token,
+                username=x.username,
+                password=x.password,
+                filter_val=None,
+                update_type='add_record', data=data,
+                reference_column=None)
 
         counter += 1
         # break
