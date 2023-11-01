@@ -26,6 +26,7 @@ def is_date(string, fuzzy=False):
     except ValueError:
         return False
 
+
 def upload_product_data(x, engine):
     df = pd.read_sql(f'Select * from quickbase_product_data', con=engine)
     df.columns = [x.upper() for x in df.columns]
@@ -175,11 +176,11 @@ def upload_sales_data(x, engine, start_date):
         min_order_date = imported_sales_dates['Date'].max()
     else:
         recruited_sales_dates = []
-        min_order_date = pd.read_sql(f'Select min(date(`PURCHASE-DATE`)) as start_date from all_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['start_date'].iloc[0]
+        min_order_date = pd.read_sql(f'Select min(date(`PURCHASE-DATE`)) as start_date from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['start_date'].iloc[0]
 
 
     print(min_order_date)
-    max_order_date = pd.read_sql(f'Select max(date(`PURCHASE-DATE`)) as end_date from all_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['end_date'].iloc[0]
+    max_order_date = pd.read_sql(f'Select max(date(`PURCHASE-DATE`)) as end_date from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['end_date'].iloc[0]
 
 
 
@@ -204,7 +205,7 @@ def upload_sales_data(x, engine, start_date):
         if date_to_recruit in recruited_sales_dates:
             print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
         else:
-            query = f'''select * from ygb_quickbase_assigned_order_data
+            query = f'''select * from ygb_quickbase_final_assigned_orders
              where `PURCHASE-DATE` >= "{date_to_recruit}" and `PURCHASE-DATE` < "{next_date_to_recruit}";
                 '''
             print_color(query, color='y')
@@ -257,13 +258,11 @@ def upload_sales_data(x, engine, start_date):
                 is_transparency = df['IS-TRANSPARENCY'].iloc[j]
                 signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
                 # status = df['STATUS'].iloc[j]
-                # fba_fee = df['FBA_FEE'].iloc[j]
-                # commission = df['COMMISSION'].iloc[j]
-                # principal = df['PRINCIPAL'].iloc[j]
+                fba_fee = df['FBA_FEE'].iloc[j]
+                commission = df['COMMISSION'].iloc[j]
+                principal = df['PRINCIPAL'].iloc[j]
                 ranking = str(df['RANKING'].iloc[j])
                 shipment_id = df['SHIPMENT-ID'].iloc[j]
-
-
 
                 body = {
                     x.upload_data.sales_fields.record_id: {"value": record_id},
@@ -302,15 +301,8 @@ def upload_sales_data(x, engine, start_date):
                     x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
                     x.upload_data.sales_fields.ranking: {"value": ranking},
                     x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
-
-
-                    # x.upload_data.sales_fields.status: {"value": status},
-                    # x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
-                    # x.upload_data.sales_fields.commission: {"value": commission}
-
-
-
-
+                    x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
+                    x.upload_data.sales_fields.commission: {"value": commission}
                 }
                 data.append(body)
                 # break

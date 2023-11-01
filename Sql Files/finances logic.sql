@@ -260,7 +260,7 @@ create table if not exists ygb_quickbase_settlement_returns_setup
 select a.*, b.QUANTITY as Settlement_Quantity, B.`UNIT-PRICE`, round(ifnull(greatest(-a.Principal / B.`UNIT-PRICE`,1),1),0) AS Order_Line_Units  from
 (select 
 ranking, STATUS, ACCOUNT_NAME, Start_Date, End_Date, `POSTED-DATE`, `SETTLEMENT-ID`, `TRANSACTION-TYPE`, `Group_ID`, `ORDER-ID`, `SKU`, `ASIN`, `AMOUNT-DESCRIPTION`, `FBA_Fee`, `Commission`, Principal, QUANTITY
-from combined_quickbase_settlement_order_data  where `TRANSACTION-TYPE` in ("Refund","Chargeback Refund")) A
+from combined_quickbase_settlement_order_data  where `TRANSACTION-TYPE` in ("Return")) A
 left join 
 ygb_quickbase_order_unit_price B USING(ACCOUNT_NAME,  `ORDER-ID`, sku);
 
