@@ -369,7 +369,7 @@ def upload_returns_data(x, engine, start_date):
             account_name = new_df['ACCOUNT_NAME'].iloc[j]
             quantity = str(new_df['QUANTITY'].iloc[j])
             purchase_date = new_df['PURCHASE-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
-            item_price = new_df['ITEM-PRICE'].iloc[j]
+            # item_price = new_df['ITEM-PRICE'].iloc[j]
             asin = new_df['ASIN'].iloc[j]
             amazon_order_id = new_df['ORDER-ID'].iloc[j]
             merchant_order_id = new_df['MERCHANT-ORDER-ID'].iloc[j]
@@ -381,14 +381,14 @@ def upload_returns_data(x, engine, start_date):
             shipment_id = new_df['GROUP_ID'].iloc[j]
             fba_fee = new_df['FBA_FEE'].iloc[j]
             commission = new_df['COMMISSION'].iloc[j]
-            principal = new_df['PRINCIPAL'].iloc[j]
+            item_price = new_df['PRINCIPAL'].iloc[j]
 
             body = {
                 x.upload_data.sales_fields.record_id: {"value": record_id},
                 x.upload_data.sales_fields.account_name: {"value": account_name},
                 x.upload_data.sales_fields.quantity: {"value": quantity},
                 x.upload_data.sales_fields.purchase_date: {"value": purchase_date},
-                x.upload_data.sales_fields.item_price: {"value": item_price},
+                # x.upload_data.sales_fields.item_price: {"value": item_price},
                 x.upload_data.sales_fields.asin: {"value": asin},
                 x.upload_data.sales_fields.amazon_order_id: {"value": amazon_order_id},
                 x.upload_data.sales_fields.merchant_order_id: {"value": merchant_order_id},
@@ -398,10 +398,11 @@ def upload_returns_data(x, engine, start_date):
                 x.upload_data.sales_fields.item_status: {"value": item_status},
                 x.upload_data.sales_fields.ranking: {"value": ranking},
                 x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
-                x.upload_data.sales_fields.shipping_price: {"value": principal},
+                x.upload_data.sales_fields.item_price: {"value": item_price},
                 x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
                 x.upload_data.sales_fields.commission: {"value": commission}
             }
+
             data.append(body)
 
         print_color(data, color='g')
@@ -413,7 +414,8 @@ def upload_returns_data(x, engine, start_date):
                 password=x.password,
                 filter_val=None,
                 update_type='add_record', data=data,
-                reference_column=None)
+                reference_column=None
+                )
 
         counter += 1
         # break
