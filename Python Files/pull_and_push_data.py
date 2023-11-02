@@ -158,14 +158,15 @@ def upload_sales_data(x, engine, start_date):
         else:
             date_to_delete_from = max_date_imported + datetime.timedelta(days = 1)
 
-        print(date_to_delete_from)
+
         QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
             table_id=x.sales_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
             username=x.qb_username, password=x.qb_password,
-            filter_val=date_to_delete_from,
-            reference_column=x.upload_data.sales_fields.purchase_date,
-            filter_type="GTE"
+            filter_val='YGB Group',
+            reference_column=x.upload_data.sales_fields.account_name,
+            filter_type="EX"
         )
+        print(date_to_delete_from)
 
 
 
@@ -181,8 +182,6 @@ def upload_sales_data(x, engine, start_date):
 
     print(min_order_date)
     max_order_date = pd.read_sql(f'Select max(date(`PURCHASE-DATE`)) as end_date from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['end_date'].iloc[0]
-
-
 
     print_color(min_order_date, color='y')
     print_color(max_order_date, color='y')
