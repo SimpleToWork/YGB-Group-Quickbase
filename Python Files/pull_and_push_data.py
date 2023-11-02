@@ -705,93 +705,93 @@ def upload_settlement_fees(x, engine, start_date):
     print_color(imported_settlements_ids, color='b')
     print_color(settlement_ids_to_import, color='b')
 
-    for each_settlement in settlement_ids_to_import:
-        df = pd.read_sql(f'''select "Posted" as STATUS, ACCOUNT_NAME, `SETTLEMENT-ID`, CURRENCY,
-            `SETTLEMENT-START-DATE`, `SETTLEMENT-END-DATE`,
-            `TOTAL-AMOUNT`, `TRANSACTION-TYPE`, 
-            `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin, sum(`AMOUNT`)  as AMOUNT from settlements A
-            left join ygb_product_account_asin B using(account_name, sku)
-           --  where `SETTLEMENT-START-DATE` >= "{start_date}"
-            where `SETTLEMENT-ID` = "{each_settlement}"
-            group by 
-            ACCOUNT_NAME, `SETTLEMENT-ID`, 
-            `SETTLEMENT-START-DATE`, `SETTLEMENT-END-DATE`,
-            `TOTAL-AMOUNT`,`TRANSACTION-TYPE`, 
-            `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin;''', con=engine)
-        df.columns = [x.upper() for x in df.columns]
-
-        df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
-        df['ASIN'] = df['ASIN'].str.upper()
-        df['SKU'] = df['SKU'].str.upper()
-
-        print_color(f'Dataframe Size {df.shape[0]}', color='b')
-        df = df.merge(reference_df, how='left',
-              left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
-              right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
-        print_color(f'Dataframe Size {df.shape[0]}', color='b')
-        # df = df[df['RECORD_ID'].isnull()]
-        df['RECORD_ID'] = df['RECORD_ID'].apply(lambda x: "" if str(x) =="nan" else x)
-        print_color(df, color='y')
-
-        counter = 0
-        for i in range(0, df.shape[0], 1000):
-            print_color(f'Attempting to upload Batch {counter} {i}:{i+999}',color='y')
-
-            new_df = df.loc[i:i+999]
-            # print(new_df)
-            qb_data = []
-            for j in range(new_df.shape[0]):
-
-
-                account_name = new_df['ACCOUNT_NAME'].iloc[j]
-                settlement_id = str(new_df['SETTLEMENT-ID'].iloc[j])
-                start_date =  new_df['SETTLEMENT-START-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
-                end_date  = new_df['SETTLEMENT-END-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
-                total_amount = str(new_df['TOTAL-AMOUNT'].iloc[j])
-                # order_id = str(new_df['ORDER-ID'].iloc[j])
-                transaction_type = new_df['TRANSACTION-TYPE'].iloc[j]
-                fee_type = new_df['AMOUNT-TYPE'].iloc[j]
-                fee_description = new_df['AMOUNT-DESCRIPTION'].iloc[j]
-                posted_date = new_df['POSTED-DATE'].iloc[j].strftime('%Y-%m-%d')
-                sku = new_df['SKU'].iloc[j]
-                asin = new_df['ASIN'].iloc[j]
-                amount = str(new_df['AMOUNT'].iloc[j])
-                status = str(new_df['STATUS'].iloc[j])
-                currency = str(new_df['CURRENCY'].iloc[j])
-
-                related_product = str(new_df['RECORD_ID'].iloc[j])
-
-                body = {
-                    x.upload_data.settlement_fees_fields.account_name: {"value": account_name},
-                    x.upload_data.settlement_fees_fields.settlement_id: {"value": settlement_id},
-                    x.upload_data.settlement_fees_fields.start_date: {"value": start_date},
-                    x.upload_data.settlement_fees_fields.end_date: {"value": end_date},
-                    x.upload_data.settlement_fees_fields.total_amount: {"value": total_amount},
-                    x.upload_data.settlement_fees_fields.status: {"value": status},
-                    x.upload_data.settlement_fees_fields.currency: {"value": currency},
-                    # x.upload_data.settlement_fees_fields.order_id: {"value": order_id},
-                    x.upload_data.settlement_fees_fields.transaction_type: {"value": transaction_type},
-                    x.upload_data.settlement_fees_fields.fee_type: {"value": fee_type},
-                    x.upload_data.settlement_fees_fields.fee_description: {"value": fee_description},
-                    x.upload_data.settlement_fees_fields.date: {"value": posted_date},
-                    x.upload_data.settlement_fees_fields.sku: {"value": sku},
-                    x.upload_data.settlement_fees_fields.asin: {"value": asin},
-                    x.upload_data.settlement_fees_fields.amount: {"value": amount},
-                    x.upload_data.settlement_fees_fields.related_product: {"value": related_product},
-
-                }
-                qb_data.append(body)
-                # break
-            print_color(f'Count of qb_data: {len(qb_data)}', color='g')
-            if len(qb_data) > 0:
-                QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.fees_table_id,
-                    user_token=x.qb_user_token, apptoken=x.qb_app_token,username=x.username, password=x.password,
-                    filter_val=None, update_type='add_record', data=qb_data, reference_column=None)
-
-                print_color(f'Batch {counter} Uploaded', color='G')
-            counter += 1
-
-        # break
+    # for each_settlement in settlement_ids_to_import:
+    #     df = pd.read_sql(f'''select "Posted" as STATUS, ACCOUNT_NAME, `SETTLEMENT-ID`, CURRENCY,
+    #         `SETTLEMENT-START-DATE`, `SETTLEMENT-END-DATE`,
+    #         `TOTAL-AMOUNT`, `TRANSACTION-TYPE`,
+    #         `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin, sum(`AMOUNT`)  as AMOUNT from settlements A
+    #         left join ygb_product_account_asin B using(account_name, sku)
+    #        --  where `SETTLEMENT-START-DATE` >= "{start_date}"
+    #         where `SETTLEMENT-ID` = "{each_settlement}"
+    #         group by
+    #         ACCOUNT_NAME, `SETTLEMENT-ID`,
+    #         `SETTLEMENT-START-DATE`, `SETTLEMENT-END-DATE`,
+    #         `TOTAL-AMOUNT`,`TRANSACTION-TYPE`,
+    #         `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin;''', con=engine)
+    #     df.columns = [x.upper() for x in df.columns]
+    #
+    #     df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
+    #     df['ASIN'] = df['ASIN'].str.upper()
+    #     df['SKU'] = df['SKU'].str.upper()
+    #
+    #     print_color(f'Dataframe Size {df.shape[0]}', color='b')
+    #     df = df.merge(reference_df, how='left',
+    #           left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'],
+    #           right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
+    #     print_color(f'Dataframe Size {df.shape[0]}', color='b')
+    #     # df = df[df['RECORD_ID'].isnull()]
+    #     df['RECORD_ID'] = df['RECORD_ID'].apply(lambda x: "" if str(x) =="nan" else x)
+    #     print_color(df, color='y')
+    #
+    #     counter = 0
+    #     for i in range(0, df.shape[0], 1000):
+    #         print_color(f'Attempting to upload Batch {counter} {i}:{i+999}',color='y')
+    #
+    #         new_df = df.loc[i:i+999]
+    #         # print(new_df)
+    #         qb_data = []
+    #         for j in range(new_df.shape[0]):
+    #
+    #
+    #             account_name = new_df['ACCOUNT_NAME'].iloc[j]
+    #             settlement_id = str(new_df['SETTLEMENT-ID'].iloc[j])
+    #             start_date =  new_df['SETTLEMENT-START-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
+    #             end_date  = new_df['SETTLEMENT-END-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
+    #             total_amount = str(new_df['TOTAL-AMOUNT'].iloc[j])
+    #             # order_id = str(new_df['ORDER-ID'].iloc[j])
+    #             transaction_type = new_df['TRANSACTION-TYPE'].iloc[j]
+    #             fee_type = new_df['AMOUNT-TYPE'].iloc[j]
+    #             fee_description = new_df['AMOUNT-DESCRIPTION'].iloc[j]
+    #             posted_date = new_df['POSTED-DATE'].iloc[j].strftime('%Y-%m-%d')
+    #             sku = new_df['SKU'].iloc[j]
+    #             asin = new_df['ASIN'].iloc[j]
+    #             amount = str(new_df['AMOUNT'].iloc[j])
+    #             status = str(new_df['STATUS'].iloc[j])
+    #             currency = str(new_df['CURRENCY'].iloc[j])
+    #
+    #             related_product = str(new_df['RECORD_ID'].iloc[j])
+    #
+    #             body = {
+    #                 x.upload_data.settlement_fees_fields.account_name: {"value": account_name},
+    #                 x.upload_data.settlement_fees_fields.settlement_id: {"value": settlement_id},
+    #                 x.upload_data.settlement_fees_fields.start_date: {"value": start_date},
+    #                 x.upload_data.settlement_fees_fields.end_date: {"value": end_date},
+    #                 x.upload_data.settlement_fees_fields.total_amount: {"value": total_amount},
+    #                 x.upload_data.settlement_fees_fields.status: {"value": status},
+    #                 x.upload_data.settlement_fees_fields.currency: {"value": currency},
+    #                 # x.upload_data.settlement_fees_fields.order_id: {"value": order_id},
+    #                 x.upload_data.settlement_fees_fields.transaction_type: {"value": transaction_type},
+    #                 x.upload_data.settlement_fees_fields.fee_type: {"value": fee_type},
+    #                 x.upload_data.settlement_fees_fields.fee_description: {"value": fee_description},
+    #                 x.upload_data.settlement_fees_fields.date: {"value": posted_date},
+    #                 x.upload_data.settlement_fees_fields.sku: {"value": sku},
+    #                 x.upload_data.settlement_fees_fields.asin: {"value": asin},
+    #                 x.upload_data.settlement_fees_fields.amount: {"value": amount},
+    #                 x.upload_data.settlement_fees_fields.related_product: {"value": related_product},
+    #
+    #             }
+    #             qb_data.append(body)
+    #             # break
+    #         print_color(f'Count of qb_data: {len(qb_data)}', color='g')
+    #         if len(qb_data) > 0:
+    #             QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.fees_table_id,
+    #                 user_token=x.qb_user_token, apptoken=x.qb_app_token,username=x.username, password=x.password,
+    #                 filter_val=None, update_type='add_record', data=qb_data, reference_column=None)
+    #
+    #             print_color(f'Batch {counter} Uploaded', color='G')
+    #         counter += 1
+    #
+    #     # break
 
 
 def upload_shipment_data(x, engine):
