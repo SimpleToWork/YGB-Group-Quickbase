@@ -52,8 +52,8 @@ def run_program(environment):
     start_date = "2023-01-01"
     po_start_date = "2022-11-01"
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
-    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
-    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
+    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
+    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
     # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='sales logic.sql')
 
 
@@ -65,9 +65,9 @@ def run_program(environment):
     # upload_sales_fees_data(x, engine, start_date)
 
     # upload_settlement_fees(x, engine, start_date)
-    upload_finance_fees(x, engine)
-
-    # upload_shipment_data(x,engine)
+    # upload_finance_fees(x, engine)
+    #
+    upload_shipment_data(x,engine)
     # upload_shipment_detail_data(x, engine)
     # upload_shipment_tracking(x, engine)
     #
