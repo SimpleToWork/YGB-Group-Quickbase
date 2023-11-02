@@ -69,14 +69,14 @@ def run_program(environment):
     #
     # upload_shipment_data(x,engine)
     # upload_shipment_detail_data(x, engine)
-    upload_shipment_tracking(x, engine)
-    #
-    # upload_inventory_data(x, engine)
-    # upload_factory_pos(x, engine, po_start_date)
-    # import_factory_pos(x, engine)
-    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='ledger logic.sql')
-    #
-    # factory_order_assignments(x, engine)
+    # upload_shipment_tracking(x, engine)
+
+    upload_inventory_data(x, engine)
+    upload_factory_pos(x, engine, po_start_date)
+    import_factory_pos(x, engine)
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='ledger logic.sql')
+
+    factory_order_assignments(x, engine)
     # google_sheet_update(project_folder=x.project_folder, program_name="YGB Group", method="Run Program")
 
 
