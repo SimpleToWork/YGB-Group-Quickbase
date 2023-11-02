@@ -979,43 +979,43 @@ def upload_shipment_detail_data(x, engine):
     new_df['RECORD_ID'] = new_df['RECORD_ID'].astype(str)
 
     print_color(new_df, color='y')
-    # print(new_df['RECORD_ID'].unique())
-    # for i in range(new_df.shape[0]):
-    #     related_product = str(new_df['RECORD_ID'].iloc[i])
-    #     account_name = new_df['ACCOUNT_NAME'].iloc[i]
-    #     shipment_id = new_df['SHIPMENTID'].iloc[i]
-    #     sku = new_df['SKU'].iloc[i]
-    #     asin = new_df['ASIN'].iloc[i]
-    #     shipped_qty = str(new_df['QUANTITYSHIPPED'].iloc[i])
-    #     received_qty = str(new_df['QUANTITYRECEIVED'].iloc[i])
-    #     qty_in_case = str(new_df['QUANTITYINCASE'].iloc[i])
-    #     release_date = new_df['RELEASEDATE'].iloc[i]
-    #     fnsku = new_df['FNSKU'].iloc[i]
-    #     print(release_date)
-    #     release_date = release_date.strftime('%Y-%m-%d') if release_date is not None else release_date
-    #
-    #     body = {
-    #         x.upload_data.shipment_detail_fields.account_name: {"value": account_name},
-    #         x.upload_data.shipment_detail_fields.shipment_id: {"value": shipment_id},
-    #         x.upload_data.shipment_detail_fields.sku: {"value": sku},
-    #         x.upload_data.shipment_detail_fields.asin: {"value": asin},
-    #         x.upload_data.shipment_detail_fields.related_product: {"value": related_product},
-    #
-    #         x.upload_data.shipment_detail_fields.shipped_qty: {"value": shipped_qty},
-    #         x.upload_data.shipment_detail_fields.received_qty: {"value": received_qty},
-    #         x.upload_data.shipment_detail_fields.qty_in_case: {"value": qty_in_case},
-    #         x.upload_data.shipment_detail_fields.release_date: {"value": release_date},
-    #         x.upload_data.shipment_detail_fields.fnsku: {"value": fnsku}
-    #     }
-    #     data.append(body)
-    #     # break
-    #
-    # print_color(data, color='b')
-    # if len(data) > 0:
-    #     QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(
-    #         table_id=x.shipment_detail_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
-    #         username=x.username, password=x.password, filter_val=None, update_type='add_record',
-    #         data=data, reference_column=None)
+    print(new_df['RECORD_ID'].unique())
+    for i in range(new_df.shape[0]):
+        related_product = str(new_df['RECORD_ID'].iloc[i])
+        account_name = new_df['ACCOUNT_NAME'].iloc[i]
+        shipment_id = new_df['SHIPMENTID'].iloc[i]
+        sku = new_df['SKU'].iloc[i]
+        asin = new_df['ASIN'].iloc[i]
+        shipped_qty = str(new_df['QUANTITYSHIPPED'].iloc[i])
+        received_qty = str(new_df['QUANTITYRECEIVED'].iloc[i])
+        qty_in_case = str(new_df['QUANTITYINCASE'].iloc[i])
+        release_date = new_df['RELEASEDATE'].iloc[i]
+        fnsku = new_df['FNSKU'].iloc[i]
+        print(release_date)
+        release_date = release_date.strftime('%Y-%m-%d') if release_date is not None else release_date
+
+        body = {
+            x.upload_data.shipment_detail_fields.account_name: {"value": account_name},
+            x.upload_data.shipment_detail_fields.shipment_id: {"value": shipment_id},
+            x.upload_data.shipment_detail_fields.sku: {"value": sku},
+            x.upload_data.shipment_detail_fields.asin: {"value": asin},
+            x.upload_data.shipment_detail_fields.related_product: {"value": related_product},
+
+            x.upload_data.shipment_detail_fields.shipped_qty: {"value": shipped_qty},
+            x.upload_data.shipment_detail_fields.received_qty: {"value": received_qty},
+            x.upload_data.shipment_detail_fields.qty_in_case: {"value": qty_in_case},
+            x.upload_data.shipment_detail_fields.release_date: {"value": release_date},
+            x.upload_data.shipment_detail_fields.fnsku: {"value": fnsku}
+        }
+        data.append(body)
+        # break
+
+    print_color(data, color='b')
+    if len(data) > 0:
+        QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(
+            table_id=x.shipment_detail_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.username, password=x.password, filter_val=None, update_type='add_record',
+            data=data, reference_column=None)
 
 
 def upload_shipment_tracking(x, engine):
