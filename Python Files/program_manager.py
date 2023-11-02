@@ -68,8 +68,8 @@ def run_program(environment):
     # upload_finance_fees(x, engine)
     #
     # upload_shipment_data(x,engine)
-    upload_shipment_detail_data(x, engine)
-    # upload_shipment_tracking(x, engine)
+    # upload_shipment_detail_data(x, engine)
+    upload_shipment_tracking(x, engine)
     #
     # upload_inventory_data(x, engine)
     # upload_factory_pos(x, engine, po_start_date)
