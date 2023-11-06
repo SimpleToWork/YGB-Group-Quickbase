@@ -1058,6 +1058,7 @@ def upload_shipment_tracking(x, engine):
         new_df = df
     # new_df = df
     print_color(new_df, color='g')
+    new_df = new_df.replace(np.nan, "")
     data = []
 
     for i in range(new_df.shape[0]):
