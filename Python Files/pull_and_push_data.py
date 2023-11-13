@@ -133,56 +133,55 @@ def upload_sales_data(x, engine, start_date):
     print_color(reference_df, color='r')
     reference_df['SKU'] = reference_df['SKU'].str.upper()
 
-    imported_sales_dates = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).get_report_records(
-        table_id=x.sales_table_id, report_id=8)
-    print_color(imported_sales_dates, color='y')
-    if imported_sales_dates.shape[0] >0:
-        imported_sales_dates['Date_Created_(max)'] = imported_sales_dates['Date_Created_(max)'].apply(lambda x: x.split("Z")[0])
-        imported_sales_dates['Date_Created_(max)'] = pd.to_datetime(imported_sales_dates['Date_Created_(max)'], format="%Y-%m-%d %H:%M:%S")
-
-        imported_sales_dates['Date'] = pd.to_datetime(imported_sales_dates['Date'], format="%m-%d-%Y")
-
-        # imported_sales_dates['Date_Created_(max)'] = imported_sales_dates['Date_Created_(max)'].dt.tz_convert('US/Eastern')
-        # print_color(imported_sales_dates, color='y')
-        # print_color(list(imported_sales_dates['Date'].unique()))
-        # # imported_sales_dates['Date'] = pd.datetime(imported_sales_dates['Date'])
-
-        dates_already_imported_today = imported_sales_dates[(imported_sales_dates['Date_Created_(max)']>= datetime.datetime.now().date())]
-        print_color(dates_already_imported_today, color='g')
-
-        max_date_imported = dates_already_imported_today['Date'].max()
-        print(max_date_imported)
-
-        if str(max_date_imported) in ('nan', 'NaT') :
-            date_to_delete_from = (datetime.datetime.now() - datetime.timedelta(days=365)).strftime('%Y-%m-%dT%H:%M:%S')
-        else:
-            date_to_delete_from = max_date_imported + datetime.timedelta(days = 1)
-
-
-        QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
+    QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
             table_id=x.sales_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
             username=x.qb_username, password=x.qb_password,
-            filter_val='YGB Group',
-            reference_column=x.upload_data.sales_fields.account_name,
+            filter_val='Sale',
+            reference_column=x.upload_data.sales_fields.order_type,
             filter_type="EX"
         )
-        print(date_to_delete_from)
+    # imported_sales_dates = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).get_report_records(
+    #     table_id=x.sales_table_id, report_id=8)
+    # print_color(imported_sales_dates, color='y')
+    # if imported_sales_dates.shape[0] >0:
+    #     imported_sales_dates['Date_Created_(max)'] = imported_sales_dates['Date_Created_(max)'].apply(lambda x: x.split("Z")[0])
+    #     imported_sales_dates['Date_Created_(max)'] = pd.to_datetime(imported_sales_dates['Date_Created_(max)'], format="%Y-%m-%d %H:%M:%S")
+    #
+    #     imported_sales_dates['Date'] = pd.to_datetime(imported_sales_dates['Date'], format="%m-%d-%Y")
+    #
+    #     # imported_sales_dates['Date_Created_(max)'] = imported_sales_dates['Date_Created_(max)'].dt.tz_convert('US/Eastern')
+    #     # print_color(imported_sales_dates, color='y')
+    #     # print_color(list(imported_sales_dates['Date'].unique()))
+    #     # # imported_sales_dates['Date'] = pd.datetime(imported_sales_dates['Date'])
+    #
+    #     dates_already_imported_today = imported_sales_dates[(imported_sales_dates['Date_Created_(max)'] >= datetime.datetime.now().date())]
+    #     print_color(dates_already_imported_today, color='g')
+    #
+    #     max_date_imported = dates_already_imported_today['Date'].max()
+    #     print(max_date_imported)
+    #
+    #     if str(max_date_imported) in ('nan', 'NaT') :
+    #         date_to_delete_from = (datetime.datetime.now() - datetime.timedelta(days=365)).strftime('%Y-%m-%dT%H:%M:%S')
+    #     else:
+    #         date_to_delete_from = max_date_imported + datetime.timedelta(days=1)
+    #
+    #
+    #     print(date_to_delete_from)
+    #
+    #
+    #
+    # print_color(imported_sales_dates, color='y')
+    # if imported_sales_dates.shape[0] >0:
+    #     imported_sales_dates['Date'] = pd.to_datetime(imported_sales_dates['Date'], format="%m-%d-%Y").dt.date
+    #     recruited_sales_dates = list(imported_sales_dates['Date'].unique())
+    #     min_order_date = imported_sales_dates['Date'].max()
+    # else:
+    # recruited_sales_dates = []
+    date_data = pd.read_sql(f'''Select min(date(`PURCHASE-DATE`)) as start_date,  max(date(`PURCHASE-DATE`)) as end_date 
+        from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"''', con=engine)
 
-
-
-    print_color(imported_sales_dates, color='y')
-    if imported_sales_dates.shape[0] >0:
-        imported_sales_dates['Date'] = pd.to_datetime(imported_sales_dates['Date'], format="%m-%d-%Y").dt.date
-        recruited_sales_dates = list(imported_sales_dates['Date'].unique())
-        min_order_date = imported_sales_dates['Date'].max()
-    else:
-        recruited_sales_dates = []
-        min_order_date = pd.read_sql(f'Select min(date(`PURCHASE-DATE`)) as start_date from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['start_date'].iloc[0]
-
-
-    print(min_order_date)
-    max_order_date = pd.read_sql(f'Select max(date(`PURCHASE-DATE`)) as end_date from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"', con=engine)['end_date'].iloc[0]
-
+    min_order_date= date_data['start_date'].iloc[0]
+    max_order_date = date_data['end_date'].iloc[0]
     print_color(min_order_date, color='y')
     print_color(max_order_date, color='y')
 
@@ -192,8 +191,8 @@ def upload_sales_data(x, engine, start_date):
     print_color(max_order_date, color='y')
 
     counter = 0
-    print_color(recruited_sales_dates, color='g')
-    print_color(imported_sales_dates, color='y')
+    # print_color(recruited_sales_dates, color='g')
+    # print_color(imported_sales_dates, color='y')
 
 
     for i in range(delta):
@@ -201,117 +200,119 @@ def upload_sales_data(x, engine, start_date):
         date_to_recruit = min_order_date + datetime.timedelta(days = i)
         next_date_to_recruit = min_order_date + datetime.timedelta(days = i+1)
         print_color(date_to_recruit, color='g')
-        if date_to_recruit in recruited_sales_dates:
-            print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
-        else:
-            query = f'''select * from ygb_quickbase_final_assigned_orders
-             where `PURCHASE-DATE` >= "{date_to_recruit}" and `PURCHASE-DATE` < "{next_date_to_recruit}";
-                '''
-            print_color(query, color='y')
-            df = pd.read_sql(query, con=engine)
-            df.columns = [x.upper() for x in df.columns]
-            df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
-            df['ASIN'] = df['ASIN'].str.upper()
-            df['SKU'] = df['SKU'].str.upper()
+        # if date_to_recruit in recruited_sales_dates:
+        #     print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
+        # else:
+        query = f'''select * from ygb_quickbase_final_assigned_orders
+         where `PURCHASE-DATE` >= "{date_to_recruit}" and `PURCHASE-DATE` < "{next_date_to_recruit}";
+            '''
+        print_color(query, color='y')
+        df = pd.read_sql(query, con=engine)
+        df.columns = [x.upper() for x in df.columns]
+        df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
+        df['ASIN'] = df['ASIN'].str.upper()
+        df['SKU'] = df['SKU'].str.upper()
 
-            df = df.merge(reference_df, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
-            # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
-            print_color(df, color='p')
+        df = df.merge(reference_df, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
+        # df.to_csv(f'C:\\users\\ricky\\desktop\\data_sample.csv', index=False)
+        print_color(df, color='p')
 
-            data = []
-            print_color(df.columns, color='y')
+        data = []
+        print_color(df.columns, color='y')
 
-            for j in range(df.shape[0]):
-                record_id = str(df['RECORD_ID'].iloc[j])
-                account_name = df['ACCOUNT_NAME'].iloc[j]
-                quantity = str(df['QUANTITY'].iloc[j])
-                purchase_date = df['PURCHASE-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
-                item_price= df['ITEM-PRICE'].iloc[j]
-                asin = df['ASIN'].iloc[j]
-                amazon_order_id = df['AMAZON-ORDER-ID'].iloc[j]
-                merchant_order_id = df['MERCHANT-ORDER-ID'].iloc[j]
-                order_status = df['ORDER-STATUS'].iloc[j]
-                fulfillment_channel = df['FULFILLMENT-CHANNEL'].iloc[j]
-                sales_channel = df['SALES-CHANNEL'].iloc[j]
-                order_channel = df['ORDER-CHANNEL'].iloc[j]
-                ship_service_level = df['SHIP-SERVICE-LEVEL'].iloc[j]
-                product_name = df['PRODUCT-NAME'].iloc[j]
-                sku = df['SKU'].iloc[j]
-                item_status = df['ITEM-STATUS'].iloc[j]
-                currency = df['CURRENCY'].iloc[j]
-                item_tax = str(df['ITEM-TAX'].iloc[j])
-                shipping_price = str(df['SHIPPING-PRICE'].iloc[j])
-                shipping_tax = str(df['SHIPPING-TAX'].iloc[j])
-                gift_wrap_price = str(df['GIFT-WRAP-PRICE'].iloc[j])
-                gift_wrap_tax = str(df['GIFT-WRAP-TAX'].iloc[j])
-                item_promotion_discount = str(df['ITEM-PROMOTION-DISCOUNT'].iloc[j])
-                ship_promotion_discount = str(df['SHIP-PROMOTION-DISCOUNT'].iloc[j])
-                ship_city = df['SHIP-CITY'].iloc[j]
-                ship_state = df['SHIP-STATE'].iloc[j]
-                ship_postal_code = df['SHIP-POSTAL-CODE'].iloc[j]
-                ship_country = df['SHIP-COUNTRY'].iloc[j]
-                promotion_ids = df['PROMOTION-IDS'].iloc[j]
-                is_business_order = df['IS-BUSINESS-ORDER'].iloc[j]
-                purchase_order_number = df['PURCHASE-ORDER-NUMBER'].iloc[j]
-                price_designation = df['PRICE-DESIGNATION'].iloc[j]
-                is_transparency = df['IS-TRANSPARENCY'].iloc[j]
-                signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
-                # status = df['STATUS'].iloc[j]
-                fba_fee = str(df['FBA_FEE'].iloc[j])
-                commission = str(df['COMMISSION'].iloc[j])
-                principal = df['PRINCIPAL'].iloc[j]
-                ranking = str(df['RANKING'].iloc[j])
-                shipment_id = df['SHIPMENT-ID'].iloc[j]
+        for j in range(df.shape[0]):
+            order_type = "Sale"
+            record_id = str(df['RECORD_ID'].iloc[j])
+            account_name = df['ACCOUNT_NAME'].iloc[j]
+            quantity = str(df['QUANTITY'].iloc[j])
+            purchase_date = df['PURCHASE-DATE'].iloc[j].strftime('%Y-%m-%dT%H:%M:%S')
+            item_price= df['ITEM-PRICE'].iloc[j]
+            asin = df['ASIN'].iloc[j]
+            amazon_order_id = df['AMAZON-ORDER-ID'].iloc[j]
+            merchant_order_id = df['MERCHANT-ORDER-ID'].iloc[j]
+            order_status = df['ORDER-STATUS'].iloc[j]
+            fulfillment_channel = df['FULFILLMENT-CHANNEL'].iloc[j]
+            sales_channel = df['SALES-CHANNEL'].iloc[j]
+            order_channel = df['ORDER-CHANNEL'].iloc[j]
+            ship_service_level = df['SHIP-SERVICE-LEVEL'].iloc[j]
+            product_name = df['PRODUCT-NAME'].iloc[j]
+            sku = df['SKU'].iloc[j]
+            item_status = df['ITEM-STATUS'].iloc[j]
+            currency = df['CURRENCY'].iloc[j]
+            item_tax = str(df['ITEM-TAX'].iloc[j])
+            shipping_price = str(df['SHIPPING-PRICE'].iloc[j])
+            shipping_tax = str(df['SHIPPING-TAX'].iloc[j])
+            gift_wrap_price = str(df['GIFT-WRAP-PRICE'].iloc[j])
+            gift_wrap_tax = str(df['GIFT-WRAP-TAX'].iloc[j])
+            item_promotion_discount = str(df['ITEM-PROMOTION-DISCOUNT'].iloc[j])
+            ship_promotion_discount = str(df['SHIP-PROMOTION-DISCOUNT'].iloc[j])
+            ship_city = df['SHIP-CITY'].iloc[j]
+            ship_state = df['SHIP-STATE'].iloc[j]
+            ship_postal_code = df['SHIP-POSTAL-CODE'].iloc[j]
+            ship_country = df['SHIP-COUNTRY'].iloc[j]
+            promotion_ids = df['PROMOTION-IDS'].iloc[j]
+            is_business_order = df['IS-BUSINESS-ORDER'].iloc[j]
+            purchase_order_number = df['PURCHASE-ORDER-NUMBER'].iloc[j]
+            price_designation = df['PRICE-DESIGNATION'].iloc[j]
+            is_transparency = df['IS-TRANSPARENCY'].iloc[j]
+            signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
+            # status = df['STATUS'].iloc[j]
+            fba_fee = str(df['FBA_FEE'].iloc[j])
+            commission = str(df['COMMISSION'].iloc[j])
+            principal = df['PRINCIPAL'].iloc[j]
+            ranking = str(df['RANKING'].iloc[j])
+            shipment_id = df['SHIPMENT-ID'].iloc[j]
 
-                body = {
-                    x.upload_data.sales_fields.record_id: {"value": record_id},
-                    x.upload_data.sales_fields.account_name: {"value": account_name},
-                    x.upload_data.sales_fields.quantity: {"value": quantity},
-                    x.upload_data.sales_fields.purchase_date: {"value": purchase_date},
-                    x.upload_data.sales_fields.item_price: {"value": item_price},
-                    x.upload_data.sales_fields.asin: {"value": asin},
-                    x.upload_data.sales_fields.amazon_order_id: {"value": amazon_order_id},
-                    x.upload_data.sales_fields.merchant_order_id: {"value": merchant_order_id},
-                    x.upload_data.sales_fields.order_status: {"value": order_status},
-                    x.upload_data.sales_fields.fulfillment_channel: {"value": fulfillment_channel},
-                    x.upload_data.sales_fields.sales_channel: {"value": sales_channel},
-                    x.upload_data.sales_fields.order_channel: {"value": order_channel},
-                    x.upload_data.sales_fields.ship_service_level: {"value": ship_service_level},
-                    x.upload_data.sales_fields.product_name: {"value": product_name},
-                    x.upload_data.sales_fields.sku: {"value": sku},
-                    x.upload_data.sales_fields.item_status: {"value": item_status},
-                    x.upload_data.sales_fields.currency: {"value": currency},
-                    x.upload_data.sales_fields.item_tax: {"value": item_tax},
-                    x.upload_data.sales_fields.shipping_price: {"value": shipping_price},
-                    x.upload_data.sales_fields.shipping_tax: {"value": shipping_tax},
-                    x.upload_data.sales_fields.gift_wrap_price: {"value": gift_wrap_price},
-                    x.upload_data.sales_fields.gift_wrap_tax: {"value": gift_wrap_tax},
-                    x.upload_data.sales_fields.item_promotion_discount: {"value": item_promotion_discount},
-                    x.upload_data.sales_fields.ship_promotion_discount: {"value": ship_promotion_discount},
-                    x.upload_data.sales_fields.ship_city: {"value": ship_city},
-                    x.upload_data.sales_fields.ship_state: {"value": ship_state},
-                    x.upload_data.sales_fields.ship_postal_code: {"value": ship_postal_code},
-                    x.upload_data.sales_fields.ship_country: {"value": ship_country},
-                    x.upload_data.sales_fields.promotion_ids: {"value": promotion_ids},
-                    x.upload_data.sales_fields.is_business_order: {"value": is_business_order},
-                    x.upload_data.sales_fields.purchase_order_number: {"value": purchase_order_number},
-                    x.upload_data.sales_fields.price_designation: {"value": price_designation},
-                    x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
-                    x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
-                    x.upload_data.sales_fields.ranking: {"value": ranking},
-                    x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
-                    x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
-                    x.upload_data.sales_fields.commission: {"value": commission}
-                }
-                data.append(body)
-                # break
-            print_color(data, color='g')
-            if len(data) > 0:
-                QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.sales_table_id,
-                    user_token=x.qb_user_token, apptoken=x.qb_app_token,username=x.username, password=x.password,
-                    filter_val=None, update_type='add_record', data=data, reference_column=None)
+            body = {
+                x.upload_data.sales_fields.record_id: {"value": record_id},
+                x.upload_data.sales_fields.account_name: {"value": account_name},
+                x.upload_data.sales_fields.quantity: {"value": quantity},
+                x.upload_data.sales_fields.purchase_date: {"value": purchase_date},
+                x.upload_data.sales_fields.item_price: {"value": item_price},
+                x.upload_data.sales_fields.asin: {"value": asin},
+                x.upload_data.sales_fields.amazon_order_id: {"value": amazon_order_id},
+                x.upload_data.sales_fields.merchant_order_id: {"value": merchant_order_id},
+                x.upload_data.sales_fields.order_status: {"value": order_status},
+                x.upload_data.sales_fields.fulfillment_channel: {"value": fulfillment_channel},
+                x.upload_data.sales_fields.sales_channel: {"value": sales_channel},
+                x.upload_data.sales_fields.order_channel: {"value": order_channel},
+                x.upload_data.sales_fields.ship_service_level: {"value": ship_service_level},
+                x.upload_data.sales_fields.product_name: {"value": product_name},
+                x.upload_data.sales_fields.sku: {"value": sku},
+                x.upload_data.sales_fields.item_status: {"value": item_status},
+                x.upload_data.sales_fields.currency: {"value": currency},
+                x.upload_data.sales_fields.item_tax: {"value": item_tax},
+                x.upload_data.sales_fields.shipping_price: {"value": shipping_price},
+                x.upload_data.sales_fields.shipping_tax: {"value": shipping_tax},
+                x.upload_data.sales_fields.gift_wrap_price: {"value": gift_wrap_price},
+                x.upload_data.sales_fields.gift_wrap_tax: {"value": gift_wrap_tax},
+                x.upload_data.sales_fields.item_promotion_discount: {"value": item_promotion_discount},
+                x.upload_data.sales_fields.ship_promotion_discount: {"value": ship_promotion_discount},
+                x.upload_data.sales_fields.ship_city: {"value": ship_city},
+                x.upload_data.sales_fields.ship_state: {"value": ship_state},
+                x.upload_data.sales_fields.ship_postal_code: {"value": ship_postal_code},
+                x.upload_data.sales_fields.ship_country: {"value": ship_country},
+                x.upload_data.sales_fields.promotion_ids: {"value": promotion_ids},
+                x.upload_data.sales_fields.is_business_order: {"value": is_business_order},
+                x.upload_data.sales_fields.purchase_order_number: {"value": purchase_order_number},
+                x.upload_data.sales_fields.price_designation: {"value": price_designation},
+                x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
+                x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
+                x.upload_data.sales_fields.ranking: {"value": ranking},
+                x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
+                x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
+                x.upload_data.sales_fields.commission: {"value": commission},
+                x.upload_data.sales_fields.order_type: {"value": order_type}
+            }
+            data.append(body)
+            # break
+        print_color(data, color='g')
+        if len(data) > 0:
+            QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(table_id=x.sales_table_id,
+                user_token=x.qb_user_token, apptoken=x.qb_app_token,username=x.username, password=x.password,
+                filter_val=None, update_type='add_record', data=data, reference_column=None)
 
-            counter +=1
+        counter +=1
 
         # break
 
