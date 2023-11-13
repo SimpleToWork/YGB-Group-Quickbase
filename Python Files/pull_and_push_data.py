@@ -341,7 +341,7 @@ def upload_returns_data(x, engine, start_date):
         table_id=x.sales_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
         username=x.qb_username, password=x.qb_password,
         filter_val= "Return",
-        reference_column=x.upload_data.sales_fields.order_status,
+        reference_column=x.upload_data.sales_fields.order_type,
         filter_type="EX"
     )
 
@@ -365,6 +365,7 @@ def upload_returns_data(x, engine, start_date):
         new_df = df.loc[i:i + 999]
         data = []
         for j in range(new_df.shape[0]):
+            order_type = "Return"
             record_id = str(new_df['RECORD_ID'].iloc[j])
             account_name = new_df['ACCOUNT_NAME'].iloc[j]
             quantity = str(new_df['QUANTITY'].iloc[j])
@@ -400,7 +401,9 @@ def upload_returns_data(x, engine, start_date):
                 x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
                 x.upload_data.sales_fields.item_price: {"value": item_price},
                 x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
-                x.upload_data.sales_fields.commission: {"value": commission}
+                x.upload_data.sales_fields.commission: {"value": commission},
+                x.upload_data.sales_fields.order_type: {"value": order_type}
+
             }
 
             data.append(body)
