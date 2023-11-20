@@ -53,17 +53,17 @@ def run_program(environment):
     po_start_date = "2022-11-01"
     engine = engine_setup(project_name=x.project_name, hostname=x.hostname, username=x.username, password=x.password, port=x.port)
 
-    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
-    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
-    # executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='sales logic.sql')
-    #
-    # upload_product_data(x, engine)
-    # upload_sales_data(x, engine, start_date)
-    # upload_returns_data(x, engine, start_date)
-    #
-    # upload_sales_fees_data(x, engine, start_date)
-    #
-    # upload_settlement_fees(x, engine, start_date)
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='data logic.sql')
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='finances logic.sql')
+    executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='sales logic.sql')
+
+    upload_product_data(x, engine)
+    upload_sales_data(x, engine, start_date)
+    upload_returns_data(x, engine, start_date)
+
+    upload_sales_fees_data(x, engine, start_date)
+
+    upload_settlement_fees(x, engine, start_date)
     upload_finance_fees(x, engine)
 
     upload_shipment_data(x,engine)
