@@ -93,6 +93,8 @@ ifnull(D.`AMOUNT-TYPE`, E.`AMOUNT-TYPE`),
 ifnull(d.`AMOUNT-DESCRIPTION`, e.`AMOUNT-DESCRIPTION`), 
 ifnull(date(POSTEDDATE), date(end_date)), `SELLERSKU`, b.asin;
 
+delete from quickbase_finances_upload where `TOTAL-AMOUNT` is null and `AMOUNT` is null;
+
 
 
 
