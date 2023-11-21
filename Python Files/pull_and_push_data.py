@@ -1428,6 +1428,7 @@ def upload_factory_pos(x, engine, start_date):
         demmurage= str(new_df['DEMURRAGE'].iloc[i])
         container_cost= str(new_df['CONTAINER_COST'].iloc[i])
         trucking_cost= str(new_df['TRUCKING_COST'].iloc[i])
+        confirmation_for_payment = str(new_df['CONFIRMATION # 1'].iloc[i])
 
         # print(completion_date)
 
@@ -1474,6 +1475,7 @@ def upload_factory_pos(x, engine, start_date):
             x.upload_data.factory_po_fields.demmurage: {"value": demmurage},
             x.upload_data.factory_po_fields.container_cost: {"value": container_cost},
             x.upload_data.factory_po_fields.trucking_cost: {"value": trucking_cost},
+            x.upload_data.factory_po_fields.confirmation_for_payment: {"value": confirmation_for_payment},
 
 
         }

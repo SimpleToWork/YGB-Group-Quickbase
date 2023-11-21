@@ -18,11 +18,18 @@ SUM(RECEIPTS) AS RECEIPTS,
 SUM(`CUSTOMER SHIPMENTS`) as `CUSTOMER SHIPMENTS`, 
 sum(`CUSTOMER RETURNS`) as `CUSTOMER RETURNS`, 
 sum(`VENDOR RETURNS`) as `VENDOR RETURNS`, 
+sum(`FOUND`) as `FOUND`, 
+sum(`LOST`) as `LOST`, 
+sum(`DAMAGED`) as `DAMAGED`, 
+sum(`DISPOSED`) as `DISPOSED`, 
+sum(`OTHER EVENTS`) as `OTHER EVENTS`, 
+sum(`UNKNOWN EVENTS`) as `UNKNOWN EVENTS`, 
 sum(`ENDING WAREHOUSE BALANCE`) as `ENDING WAREHOUSE BALANCE`
 from ledger_summary_view A
 inner join ygb_quickbase_active_sku_list B on A.account_name = B.account_name  and a.msku = b.sku
 where date >=  @start_date 
 group by ACCOUNT_NAME, MSKU, DATE, DISPOSITION;
+
 
 SET @MAX_DATE = (SELECT MAX(DATE) FROM ledger_summary_view  );
 
@@ -75,14 +82,25 @@ inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  a
 where  PO_Status = "Completed" and FBA_Shipment_ID != "" and ETA >= @start_date) A) B;
 
 
+-- drop table if exists ygb_inventory_ledger_removals;
+-- create table if not exists ygb_inventory_ledger_removals
+-- select a.Account_Name, `ORDER-ID`, date(`REQUEST-DATE`) as date, a.SKU,B.ASIN as asin, `ORDER-TYPE`, `ORDER-STATUS`, -`SHIPPED-QUANTITY`
+-- from fba_removal_order_detail A
+-- inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
+-- where date(`REQUEST-DATE`) >=  @start_date
+-- and `ORDER-STATUS` in ("Completed")
+-- and `SHIPPED-QUANTITY` != 0
+-- ;
+
+
 drop table if exists ygb_inventory_ledger_removals;
 create table if not exists ygb_inventory_ledger_removals
-select a.Account_Name, `ORDER-ID`, date(`REQUEST-DATE`) as date, a.SKU,B.ASIN as asin, "Removal", `ORDER-STATUS`, -`SHIPPED-QUANTITY`
-from fba_removal_order_detail A
+select a.Account_Name, `ORDER-ID`, date(`REQUEST-DATE`) as date, a.SKU,B.ASIN as asin, 
+case when `REMOVAL-ORDER-TYPE` = "Return" then "Vendor Removal" else `REMOVAL-ORDER-TYPE` end as `REMOVAL-ORDER-TYPE`, `DISPOSITION`, -`SHIPPED-QUANTITY`
+from fba_removal_shipment_detail A
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
 where date(`REQUEST-DATE`) >=  @start_date
-and `ORDER-STATUS` in ("Completed");
-
+and `SHIPPED-QUANTITY` != 0;
 
 
 
