@@ -82,7 +82,7 @@ drop table if exists ygb_quickbase_return_data;
 create table if not exists ygb_quickbase_return_data (primary key( ACCOUNT_NAME, `ORDER-ID`, SKU, `ORDER-STATUS`, Ranking))
 select
 row_number() over (partition by A.ACCOUNT_NAME, A.`ORDER-ID`, A.SKU order by A.ACCOUNT_NAME, A.`ORDER-ID`, A.SKU) as Ranking,
-A.ACCOUNT_NAME,  QUANTITY, `RETURN-DATE` as `PURCHASE-DATE`,null as `ITEM-PRICE`, ASIN, A.`ORDER-ID` ,A.`ORDER-ID` as `MERCHANT-ORDER-ID`,
+A.ACCOUNT_NAME,  - QUANTITY as QUANTITY, `RETURN-DATE` as `PURCHASE-DATE`,null as `ITEM-PRICE`, ASIN, A.`ORDER-ID` ,A.`ORDER-ID` as `MERCHANT-ORDER-ID`,
 "Return" as `ORDER-STATUS`, `PRODUCT-NAME`, A.SKU, A.STATUS as `ITEM-STATUS`
 from fba_returns A
 where `RETURN-DATE` >= "2023-01-01" ;
