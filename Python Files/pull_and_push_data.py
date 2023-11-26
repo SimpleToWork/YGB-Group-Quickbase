@@ -55,15 +55,16 @@ def upload_product_data(x, engine):
         reference_df = quickbase_data[[account_name_column, sku_column, asin_column]]
         reference_df.columns = ['ACCOUNT_NAME', 'SKU', 'ASIN']
         print_color(reference_df, color='y')
-        new_df = pd.concat([reference_df, df]).drop_duplicates(subset=['ACCOUNT_NAME', 'SKU', 'ASIN'], keep=False)
-        print(type(reference_df), type(df))
+        new_df = pd.concat([reference_df, df], sort=False).drop_duplicates(subset=['ACCOUNT_NAME', 'SKU', 'ASIN'], keep=False)
+        # print(type(reference_df), type(df))
     else:
         new_df = df
         print_color(new_df, color='y')
 
-    df['OPEN-DATE'] = pd.to_datetime( df['OPEN-DATE'])
+    new_df['OPEN-DATE'] = pd.to_datetime( new_df['OPEN-DATE'])
     data = []
-    print_color(df.columns, color='y')
+    print_color(new_df.columns, color='y')
+    print_color(new_df.shape[0], color='y')
     for i in range(new_df.shape[0]):
         account_name = df['ACCOUNT_NAME'].iloc[i]
         asin = df['ASIN'].iloc[i]
