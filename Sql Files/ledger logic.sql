@@ -6,8 +6,9 @@ update ygb_quickbase_po_data set Eta = "2023-10-04" where PO_Status= "Completed"
 
 drop table if exists ygb_quickbase_active_sku_list;
 create table if not exists ygb_quickbase_active_sku_list(primary key(account_name, sku))
-select distinct account_name, SKU, ASIN from product_data
-where sku in (select distinct sku from ygb_quickbase_po_data where ETA >= @start_date);
+select  account_name, SKU, ASIN from product_data
+where sku in (select distinct sku from ygb_quickbase_po_data where ETA >= @start_date)
+group by  account_name, SKU;
 
 
 
