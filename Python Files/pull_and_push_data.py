@@ -65,26 +65,32 @@ def upload_product_data(x, engine):
     data = []
     print_color(new_df.columns, color='y')
     print_color(new_df.shape[0], color='y')
-    for i in range(new_df.shape[0]):
-        account_name = df['ACCOUNT_NAME'].iloc[i]
-        asin = df['ASIN'].iloc[i]
-        parent_asin = df['PARENT_ASIN'].iloc[i]
-        sku = df['SKU'].iloc[i]
-        listing_id = df['LISTING-ID'].iloc[i]
-        item_name = df['ITEM-NAME'].iloc[i]
-        description = df['ITEM-DESCRIPTION'].iloc[i]
-        price = df['PRICE'].iloc[i]
-        open_date = df['OPEN-DATE'].iloc[i]
-        print_color(open_date, color='r')
-        open_date =  open_date.strftime('%Y-%m-%dT%H:%M:%S') if  str(open_date) != "NaT" else  ""
 
-        product_id = df['PRODUCT-ID'].iloc[i]
-        fulfillment_channel = df['FULFILLMENT-CHANNEL'].iloc[i]
-        status = df['STATUS'].iloc[i]
-        style = df['STYLE'].iloc[i]
-        color = df['COLOR'].iloc[i]
-        size = df['SIZE'].iloc[i]
-        fnsku = df['FNSKU'].iloc[i]
+
+    new_df.fillna('', inplace=True)
+    print_color(new_df, color='y')
+
+    for i in range(new_df.shape[0]):
+        account_name = new_df['ACCOUNT_NAME'].iloc[i]
+        asin = new_df['ASIN'].iloc[i]
+        parent_asin = new_df['PARENT_ASIN'].iloc[i]
+        sku = new_df['SKU'].iloc[i]
+        listing_id = new_df['LISTING-ID'].iloc[i]
+        item_name = new_df['ITEM-NAME'].iloc[i]
+        description = new_df['ITEM-DESCRIPTION'].iloc[i]
+        price = new_df['PRICE'].iloc[i]
+        open_date = new_df['OPEN-DATE'].iloc[i]
+        print_color(open_date, color='r')
+        if open_date != "" and  str(open_date) != "NaT":
+            open_date =  open_date.strftime('%Y-%m-%dT%H:%M:%S')
+
+        product_id = new_df['PRODUCT-ID'].iloc[i]
+        fulfillment_channel = new_df['FULFILLMENT-CHANNEL'].iloc[i]
+        status = new_df['STATUS'].iloc[i]
+        style = new_df['STYLE'].iloc[i]
+        color = new_df['COLOR'].iloc[i]
+        size = new_df['SIZE'].iloc[i]
+        fnsku = new_df['FNSKU'].iloc[i]
 
         body = {
             x.upload_data.product_fields.product_name: {"value": item_name},
