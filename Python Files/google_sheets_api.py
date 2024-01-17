@@ -10,12 +10,39 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+import string
+import math
 import pandas as pd
 import numpy as np
-from global_modules import print_color
+import os
+from collections import namedtuple
 # from sqlalchemy import inspect
 # import global_modules
-# from global_modules import engine_setup, print_color, run_sql_scripts
+from global_modules import print_color
+import platform
+import datetime
+import getpass
+
+RangeCoordinates = namedtuple('RangeCoordinates', 'row column number_of_rows number_of_columns sheet_name')
+
+
+def google_sheet_update(x, program_name, method):
+
+    client_secret_file = x.gsheet_credentials_file
+    token_file = x.gsheet_token_file
+    sheet_id = x.gsheet_dashboard_id
+    SCOPES = x.gsheet_scopes
+    GsheetAPI = GoogleSheetsAPI(credentials_file=client_secret_file, token_file=token_file, scopes=SCOPES, sheet_id=sheet_id)
+
+    computer_name = platform.node()
+    user = getpass.getuser()
+    time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data_list = [time_now, computer_name, user, program_name, method, True]
+    sheet_name = x.gsheet_dashboard_sheet_name
+
+    GsheetAPI.insert_row_to_sheet(sheetname=sheet_name, gid=x.gsheet_gid,
+                                  insert_range=['A', 1, "F", 1],
+                                  data=[data_list])
 
 
 class GoogleSheetsAPI():
@@ -28,6 +55,9 @@ class GoogleSheetsAPI():
 
         self.service = self.service_setup()
 
+        print_color(f'https://docs.google.com/spreadsheets/d/{sheet_id}', color='y')
+
+
     def service_setup(self):
         creds = None
         # The file token.json stores the user's access and refresh tokens, and is
@@ -38,7 +68,11 @@ class GoogleSheetsAPI():
             # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                try:
+                    creds.refresh(Request())
+                except:
+                    os.remove(self.token_file)
+                    self.service_setup()
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.scopes)
                 creds = flow.run_local_server(port=0)
@@ -61,7 +95,7 @@ class GoogleSheetsAPI():
 
         print('Spreadsheet ID: {0}'.format(spreadsheet.get('spreadsheetId')))
 
-    def get_data_from_sheet(self, sheetname, range_name):
+    def get_data_from_sheet(self, sheetname, range_name, get_hyperlinks=False):
         """Shows basic usage of the Sheets API.
         Prints values from a sample spreadsheet.
         """
@@ -69,11 +103,24 @@ class GoogleSheetsAPI():
 
         # Call the Sheets API
         sheet = self.service.spreadsheets()
-        range_value = f'{sheetname}!{range_name}'
-        print_color(range_value, color='y')
+
+        # if get_hyperlinks is True:
+        #     result = sheet.get(spreadsheetId=self.sheet_id).execute()
+        #
+        # else:
         result = sheet.values().get(spreadsheetId=self.sheet_id,
-                                    range=range_value).execute()
+                                range=f'{sheetname}!{range_name}').execute()
+        # print_color(result, color='y')
         values = result.get('values', [])
+
+
+        #     for row in result.get('values', []):
+        #         for cell in row:
+        #             print_color(cell, color='g')
+        #             if 'hyperlink' in cell:
+        #                 print(f'Hyperlink found: {cell["hyperlink"]}')
+        #     df = None
+        # else:
         df = pd.DataFrame(values)
         if df.shape[0] > 0:
             new_header = df.iloc[0]
@@ -147,6 +194,7 @@ class GoogleSheetsAPI():
                             copy_source_range =[0,1,1,1,1],
                             copy_destinations_range = [0,1,1,1,1],
                             copy_pasteType = None
+
                             ):
 
         request_body = [
@@ -240,3 +288,50 @@ class GoogleSheetsAPI():
 
         # self.service.spreadsheets().append_row(insertRow, table_range=f"{start_column}{start_row}")
 
+    def sort_sheet(self, gid, sort_range=  [1,1,1,1], dimensionIndex=1, sortOrder='ASCENDING'):
+
+        request_body = [
+            {
+                "sortRange": {
+                    "range": {
+                        "sheetId": gid,
+                        "startRowIndex": sort_range[1],
+                        "endRowIndex": sort_range[3],
+                        "startColumnIndex": sort_range[0],
+                        "endColumnIndex": sort_range[2]
+                    },
+                    "sortSpecs": [
+                        {
+                            "dimensionIndex": dimensionIndex,
+                            "sortOrder": sortOrder
+                        },
+                    ]
+                }
+            }
+        ]
+
+        body = {'requests': request_body}
+        print_color(body, color='p')
+
+        self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id, body=body).execute()
+
+
+    def delete_row_from_sheet(self,  gid,
+                            delete_range= ['A',1,'A',1]):
+        request_body = [
+            {
+                'deleteDimension': {
+                    'range': {
+                        'sheetId': gid,
+                        'dimension': 'ROWS',
+                        'startIndex': str(delete_range[1]),
+                        'endIndex':str(delete_range[3] + 1)
+                    }
+                }
+            }
+        ]
+
+        body = {'requests': request_body}
+        print_color(body, color='p')
+
+        self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id, body=body).execute()

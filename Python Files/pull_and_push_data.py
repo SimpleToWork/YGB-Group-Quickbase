@@ -1,7 +1,7 @@
 import getpass
 import pandas as pd
 import numpy as np
-from global_modules import print_color, run_sql_scripts, Get_SQL_Types, Change_Sql_Column_Types
+from global_modules import print_color, run_sql_scripts, Get_SQL_Types, Change_Sql_Column_Types, push_data_to_sql
 from quickbase_class import QuickbaseAPI
 from google_sheets_api import GoogleSheetsAPI
 import datetime
@@ -27,8 +27,73 @@ def is_date(string, fuzzy=False):
         return False
 
 
+def get_qb_product_data(x):
+    quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
+                                                               app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.product_table_id,
+        col_order=x.upload_data.product_fields.col_order,
+        filter=x.upload_data.product_fields.filter,
+        field_id=x.upload_data.product_fields.field_id,
+        filter_type=x.upload_data.product_fields.filter_type,
+        filter_operator=x.upload_data.product_fields.filter_operator
+    )
+    record_id_column = product_column_dict.get(x.upload_data.product_fields.record_id)
+    account_name_column = product_column_dict.get(x.upload_data.product_fields.account_name)
+    sku_column = product_column_dict.get(x.upload_data.product_fields.sku)
+    asin_column = product_column_dict.get(x.upload_data.product_fields.asin)
+
+    product_reference_df = quickbase_product_data[[record_id_column, account_name_column, sku_column, asin_column]]
+    product_reference_df.columns = ['RECORD_ID', 'ACCOUNT_NAME', 'SKU', 'ASIN']
+    print_color(product_reference_df, color='r')
+    product_reference_df['SKU'] = product_reference_df['SKU'].str.upper()
+    product_reference_df['ASIN'] = product_reference_df['ASIN'].str.upper()
+
+    return product_reference_df
+
+def get_qb_shipment_data(x):
+    quickbase_shipment_data, shipment_column_dict = QuickbaseAPI(hostname=x.qb_hostname,
+                                                                 auth=x.qb_auth,
+                                                                 app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.shipment_table_id,
+        col_order=x.upload_data.shipment_fields.col_order,
+        filter=x.upload_data.shipment_fields.filter,
+        field_id=x.upload_data.shipment_fields.field_id,
+        filter_type=x.upload_data.shipment_fields.filter_type,
+        filter_operator=x.upload_data.shipment_fields.filter_operator
+    )
+
+    shipment_column = shipment_column_dict.get(x.upload_data.shipment_fields.shipment_id)
+
+
+    quickbase_shipment_data[shipment_column] = quickbase_shipment_data[shipment_column].str.upper()
+    return quickbase_shipment_data, shipment_column_dict
+
+
+def get_qb_shipment_detail_data(x):
+    quickbase_shipment_detail_data, shipment_detail_column_dict = QuickbaseAPI(hostname=x.qb_hostname,
+                                                                 auth=x.qb_auth,
+                                                                 app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.shipment_detail_table_id,
+        col_order=x.upload_data.shipment_detail_fields.col_order,
+        filter=x.upload_data.shipment_detail_fields.filter,
+        field_id=x.upload_data.shipment_detail_fields.field_id,
+        filter_type=x.upload_data.shipment_detail_fields.filter_type,
+        filter_operator=x.upload_data.shipment_detail_fields.filter_operator
+    )
+
+    shipment_column = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.shipment_id)
+    sku_column = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.sku)
+    asin_column = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.asin)
+
+    quickbase_shipment_detail_data[shipment_column] = quickbase_shipment_detail_data[shipment_column].str.upper()
+    quickbase_shipment_detail_data[sku_column] = quickbase_shipment_detail_data[sku_column].str.upper()
+    quickbase_shipment_detail_data[asin_column] = quickbase_shipment_detail_data[asin_column].str.upper()
+
+    return quickbase_shipment_detail_data, shipment_detail_column_dict
+
+
 def upload_product_data(x, engine):
-    df = pd.read_sql(f'Select * from quickbase_product_data', con=engine)
+    df = pd.read_sql(f'Select * from current_product_data', con=engine)
     df.columns = [x.upper() for x in df.columns]
     df = df.replace(np.nan, "")
     print_color(df, color='y')
@@ -184,8 +249,10 @@ def upload_sales_data(x, engine, start_date):
     #     min_order_date = imported_sales_dates['Date'].max()
     # else:
     # recruited_sales_dates = []
-    date_data = pd.read_sql(f'''Select min(date(`PURCHASE-DATE`)) as start_date,  max(date(`PURCHASE-DATE`)) as end_date 
-        from ygb_quickbase_final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"''', con=engine)
+
+
+    date_data = pd.read_sql(f'''Select min(date(`PURCHASE-DATE`)) as start_date,  max(date(`PURCHASE-DATE`)) as end_date
+        from final_assigned_orders where `PURCHASE-DATE` >= "{start_date}"''', con=engine)
 
     min_order_date= date_data['start_date'].iloc[0]
     max_order_date = date_data['end_date'].iloc[0]
@@ -210,7 +277,7 @@ def upload_sales_data(x, engine, start_date):
         # if date_to_recruit in recruited_sales_dates:
         #     print_color(f'Data for date {date_to_recruit} has already been imported', color='r')
         # else:
-        query = f'''select * from ygb_quickbase_final_assigned_orders
+        query = f'''select * from final_assigned_orders_grouped
          where `PURCHASE-DATE` >= "{date_to_recruit}" and `PURCHASE-DATE` < "{next_date_to_recruit}";
             '''
         print_color(query, color='y')
@@ -268,7 +335,7 @@ def upload_sales_data(x, engine, start_date):
             commission = str(df['COMMISSION'].iloc[j])
             principal = df['PRINCIPAL'].iloc[j]
             ranking = str(df['RANKING'].iloc[j])
-            shipment_id = df['SHIPMENT-ID'].iloc[j]
+            # shipment_id = df['SHIPMENT-ID'].iloc[j]
 
             body = {
                 x.upload_data.sales_fields.record_id: {"value": record_id},
@@ -306,7 +373,7 @@ def upload_sales_data(x, engine, start_date):
                 x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
                 x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
                 x.upload_data.sales_fields.ranking: {"value": ranking},
-                x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
+                # x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
                 x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
                 x.upload_data.sales_fields.commission: {"value": commission},
                 x.upload_data.sales_fields.order_type: {"value": order_type}
@@ -325,24 +392,7 @@ def upload_sales_data(x, engine, start_date):
 
 
 def upload_returns_data(x, engine, start_date):
-    quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
-                                                               app_id=x.qb_app_id).get_qb_table_records(
-        table_id=x.product_table_id,
-        col_order=x.upload_data.product_fields.col_order,
-        filter=x.upload_data.product_fields.filter,
-        field_id=x.upload_data.product_fields.field_id,
-        filter_type=x.upload_data.product_fields.filter_type,
-        filter_operator=x.upload_data.product_fields.filter_operator
-    )
-    record_id_column = product_column_dict.get(x.upload_data.product_fields.record_id)
-    account_name_column = product_column_dict.get(x.upload_data.product_fields.account_name)
-    sku_column = product_column_dict.get(x.upload_data.product_fields.sku)
-    asin_column = product_column_dict.get(x.upload_data.product_fields.asin)
-
-    reference_df = quickbase_product_data[[record_id_column, account_name_column, sku_column, asin_column]]
-    reference_df.columns = ['RECORD_ID', 'ACCOUNT_NAME', 'SKU', 'ASIN']
-    print_color(reference_df, color='r')
-    reference_df['SKU'] = reference_df['SKU'].str.upper()
+    reference_df = get_qb_product_data(x)
 
     QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
         table_id=x.sales_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
@@ -352,7 +402,7 @@ def upload_returns_data(x, engine, start_date):
         filter_type="EX"
     )
 
-    df = pd.read_sql(f'''select * from ygb_quickbase_final_assigned_returns where `PURCHASE-DATE` >= "{start_date}";''',
+    df = pd.read_sql(f'''select * from final_assigned_returns where `PURCHASE-DATE` >= "{start_date}";''',
                      con=engine)
 
     df.columns = [x.upper() for x in df.columns]
@@ -465,9 +515,9 @@ def upload_sales_fees_data(x, engine, start_date):
     print_color(imported_settlements, color='b')
 
     settlement_ids = pd.read_sql(
-        f'''select distinct  `SETTLEMENT-ID` from quickbase_settlement_order_data
+        f'''select distinct  `SETTLEMENT-ID` from settlement_order_data
             union
-            select distinct  `SETTLEMENT-ID` from quickbase_finance_order_data
+            select distinct  `SETTLEMENT-ID` from finance_order_data
         ''', con=engine)['SETTLEMENT-ID'].unique().tolist()
     # print_color(settlement_ids, color='b')
     settlement_ids_to_import = [x for x in settlement_ids if str(x) not in imported_settlements_ids]
@@ -569,26 +619,9 @@ def upload_finance_fees(x, engine):
                             filter_type = "EX")
 
 
-    quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
-                                                               app_id=x.qb_app_id).get_qb_table_records(
-        table_id=x.product_table_id,
-        col_order=x.upload_data.product_fields.col_order,
-        filter=x.upload_data.product_fields.filter,
-        field_id=x.upload_data.product_fields.field_id,
-        filter_type=x.upload_data.product_fields.filter_type,
-        filter_operator=x.upload_data.product_fields.filter_operator
-    )
-    record_id_column = product_column_dict.get(x.upload_data.product_fields.record_id)
-    account_name_column = product_column_dict.get(x.upload_data.product_fields.account_name)
-    sku_column = product_column_dict.get(x.upload_data.product_fields.sku)
-    asin_column = product_column_dict.get(x.upload_data.product_fields.asin)
+    reference_df = get_qb_product_data(x)
 
-    reference_df = quickbase_product_data[[record_id_column, account_name_column, sku_column, asin_column]]
-    reference_df.columns = ['RECORD_ID', 'ACCOUNT_NAME', 'SKU', 'ASIN']
-    print_color(reference_df, color='r')
-    reference_df['SKU'] = reference_df['SKU'].str.upper()
-
-    df = pd.read_sql(f'Select * from quickbase_finances_upload', con=engine)
+    df = pd.read_sql(f'Select * from finances_upload where `SETTLEMENT-START-DATE` is not null', con=engine)
     df.columns = [x.upper() for x in df.columns]
     df['ACCOUNT_NAME'] = df['ACCOUNT_NAME'].str.upper()
     df['ASIN'] = df['ASIN'].str.upper()
@@ -667,37 +700,20 @@ def upload_finance_fees(x, engine):
 
 
 def upload_settlement_fees(x, engine, start_date):
-    quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
-                                                               app_id=x.qb_app_id).get_qb_table_records(
-        table_id=x.product_table_id,
-        col_order=x.upload_data.product_fields.col_order,
-        filter=x.upload_data.product_fields.filter,
-        field_id=x.upload_data.product_fields.field_id,
-        filter_type=x.upload_data.product_fields.filter_type,
-        filter_operator=x.upload_data.product_fields.filter_operator
-    )
-    record_id_column = product_column_dict.get(x.upload_data.product_fields.record_id)
-    account_name_column = product_column_dict.get(x.upload_data.product_fields.account_name)
-    sku_column = product_column_dict.get(x.upload_data.product_fields.sku)
-    asin_column = product_column_dict.get(x.upload_data.product_fields.asin)
-
-    reference_df = quickbase_product_data[[record_id_column, account_name_column, sku_column, asin_column]]
-    reference_df.columns = ['RECORD_ID', 'ACCOUNT_NAME', 'SKU', 'ASIN']
-    print_color(reference_df, color='r')
-    reference_df['SKU'] = reference_df['SKU'].str.upper()
+    reference_df = get_qb_product_data(x)
 
     # reference_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\product_data.csv', index=False)
 
-    scripts = []
-    scripts.append(f'drop table if exists ygb_product_account_asin;')
-    scripts.append(f'''create table if not exists ygb_product_account_asin(primary key(account_name, sku))
-        select * from
-        (select account_name, sku, asin, VARIATIONTYPE, 
-        row_number() over (partition by account_name, sku order by sku, case when  VARIATIONTYPE = "child" then 1 else 2 end) as ranking 
-        from product_data) A
-        where ranking = 1''')
-
-    run_sql_scripts(engine=engine, scripts=scripts)
+    # scripts = []
+    # scripts.append(f'drop table if exists ygb_product_account_asin;')
+    # scripts.append(f'''create table if not exists ygb_product_account_asin(primary key(account_name, sku))
+    #     select * from
+    #     (select account_name, sku, asin, VARIATIONTYPE,
+    #     row_number() over (partition by account_name, sku order by sku, case when  VARIATIONTYPE = "child" then 1 else 2 end) as ranking
+    #     from product_data) A
+    #     where ranking = 1''')
+    #
+    # run_sql_scripts(engine=engine, scripts=scripts)
 
     imported_settlements = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).get_report_records(
         table_id=x.fees_table_id, report_id=11)
@@ -720,7 +736,7 @@ def upload_settlement_fees(x, engine, start_date):
             `SETTLEMENT-START-DATE`, `SETTLEMENT-END-DATE`,
             `TOTAL-AMOUNT`, `TRANSACTION-TYPE`,
             `AMOUNT-TYPE`, `AMOUNT-DESCRIPTION`, `POSTED-DATE`, `SKU`,asin, sum(`AMOUNT`)  as AMOUNT from settlements A
-            left join ygb_product_account_asin B using(account_name, sku)
+            left join product_account_asin B using(account_name, sku)
            --  where `SETTLEMENT-START-DATE` >= "{start_date}"
             where `SETTLEMENT-ID` = "{each_settlement}"
             group by
@@ -901,25 +917,7 @@ def upload_shipment_data(x, engine):
 
 
 def upload_shipment_detail_data(x, engine):
-    quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
-                                                               app_id=x.qb_app_id).get_qb_table_records(
-        table_id=x.product_table_id,
-        col_order=x.upload_data.product_fields.col_order,
-        filter=x.upload_data.product_fields.filter,
-        field_id=x.upload_data.product_fields.field_id,
-        filter_type=x.upload_data.product_fields.filter_type,
-        filter_operator=x.upload_data.product_fields.filter_operator
-    )
-    record_id_column = product_column_dict.get(x.upload_data.product_fields.record_id)
-    account_name_column = product_column_dict.get(x.upload_data.product_fields.account_name)
-    sku_column = product_column_dict.get(x.upload_data.product_fields.sku)
-    asin_column = product_column_dict.get(x.upload_data.product_fields.asin)
-
-    product_reference_df = quickbase_product_data[[record_id_column, account_name_column, sku_column, asin_column]]
-    product_reference_df.columns = ['RECORD_ID', 'ACCOUNT_NAME', 'SKU', 'ASIN']
-    print_color(product_reference_df, color='r')
-    product_reference_df['SKU'] = product_reference_df['SKU'].str.upper()
-    product_reference_df['ASIN'] = product_reference_df['ASIN'].str.upper()
+    product_reference_df = get_qb_product_data(x)
 
 
     filter_list = ['RECEIVING', 'DELIVERED', 'WORKING', 'READY_TO_SHIP', 'SHIPPED', 'ERROR', 'IN_TRANSIT', 'CHECKED_IN']
@@ -1111,25 +1109,121 @@ def upload_shipment_tracking(x, engine):
             data=data, reference_column=None)
 
 
-def upload_inventory_data(x, engine):
-    quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
-                                                               app_id=x.qb_app_id).get_qb_table_records(
-        table_id=x.product_table_id,
-        col_order=x.upload_data.product_fields.col_order,
-        filter=x.upload_data.product_fields.filter,
-        field_id=x.upload_data.product_fields.field_id,
-        filter_type=x.upload_data.product_fields.filter_type,
-        filter_operator=x.upload_data.product_fields.filter_operator
+def upload_inbound_tracking_data(x, engine):
+    QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
+        table_id=x.shipment_receiving_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+        username=x.qb_username, password=x.qb_password,
+        filter_val="YGB Group",
+        reference_column=x.upload_data.shipment_receiving.account_name
     )
-    record_id_column = product_column_dict.get(x.upload_data.product_fields.record_id)
-    account_name_column = product_column_dict.get(x.upload_data.product_fields.account_name)
-    sku_column = product_column_dict.get(x.upload_data.product_fields.sku)
-    asin_column = product_column_dict.get(x.upload_data.product_fields.asin)
+    # get product data to connect
+    product_reference_df = get_qb_product_data(x)
+    quickbase_shipment_data, shipment_column_dict = get_qb_shipment_data(x)
+    quickbase_shipment_detail_data, shipment_detail_column_dict = get_qb_shipment_detail_data(x)
 
-    reference_df = quickbase_product_data[[record_id_column, account_name_column, sku_column, asin_column]]
-    reference_df.columns = ['RECORD_ID', 'ACCOUNT_NAME', 'SKU', 'ASIN']
-    print_color(reference_df, color='r')
-    reference_df['SKU'] = reference_df['SKU'].str.upper()
+    qb_shipment_detail_account = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.account_name)
+    qb_shipment_detail_sku = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.sku)
+    qb_shipment_detail_asin = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.asin)
+    qb_shipment_detail_shipment_id = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.shipment_id)
+    qb_shipment_detail_record_id = shipment_detail_column_dict.get(x.upload_data.shipment_detail_fields.record_id)
+    quickbase_shipment_detail_data = quickbase_shipment_detail_data[
+        [qb_shipment_detail_account, qb_shipment_detail_sku, qb_shipment_detail_asin, qb_shipment_detail_shipment_id,
+         qb_shipment_detail_record_id]]
+    quickbase_shipment_detail_data.columns = ['ACCOUNT_NAME', 'SKU', 'ASIN', 'SHIPMENTID', 'SHIPMENT_DETAIL_RECORD_ID']
+
+
+    df = pd.read_sql(f'''select
+    UPPER(ACCOUNT_NAME) AS ACCOUNT_NAME, SHIPMENTID, UPPER(SELLERSKU) as SKU,
+    UPPER(B.ASIN) AS ASIN,
+    FULFILLMENTNETWORKSKU, QUANTITYSHIPPED, QUANTITYRECEIVED, SHIPMENTSTATUS, VALUE, Cost_Per_Unit, date as RECEIVED_DATE, QUANTITY, Running_Quantity, Receipt_Cost, SHIPMENTNAME
+    from inbound_report A
+    left join (select * from (select account_name, SKU AS SELLERSKU, parent_asin, asin, row_number() over (partition by account_name, SKU  order by parent_asin desc) as ranking from current_product_data) a where ranking =1 ) B USING(ACCOUNT_NAME,SELLERSKU)
+    where SHIPMENTSTATUS is not null
+    and QUANTITYRECEIVED != 0
+    and date is not null
+    order by  ACCOUNT_NAME, SHIPMENTID, SELLERSKU , date asc;''', con=engine)
+    df.columns = [x.upper() for x in df.columns]
+    df = df.replace(np.nan, "")
+
+    print_color(df.columns, color='r')
+    print_color(quickbase_shipment_data.columns, color='r')
+
+    qb_shipment_column = shipment_column_dict.get(x.upload_data.shipment_fields.shipment_id).upper()
+    qb_account_column = shipment_column_dict.get(x.upload_data.shipment_fields.account_name).upper()
+    quickbase_shipment_data.columns = [x.upper() for x in quickbase_shipment_data.columns]
+    quickbase_shipment_data[qb_account_column] = quickbase_shipment_data[qb_account_column].str.upper()
+    quickbase_shipment_data[qb_shipment_column] = quickbase_shipment_data[qb_shipment_column].str.upper()
+
+    new_df = df.merge(quickbase_shipment_data, how='left',
+                      left_on=['ACCOUNT_NAME', 'SHIPMENTID'],
+                      right_on=[qb_account_column, qb_shipment_column])
+    new_df = new_df.merge(product_reference_df, how='left',
+                          left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
+
+    new_df = new_df.merge(quickbase_shipment_detail_data, how='left',
+                          left_on=['ACCOUNT_NAME', 'SKU', 'ASIN', 'SHIPMENTID'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN', 'SHIPMENTID'])
+
+    print_color(new_df, color='g')
+
+    new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\sample_data.csv', index=False)
+    new_df.columns = [x.upper() for x in new_df.columns]
+    print_color(new_df.columns, color='y')
+
+    data = []
+    for i in range(new_df.shape[0]):
+        account_name = new_df['ACCOUNT_NAME'].iloc[i]
+        shipment_id = new_df['SHIPMENTID'].iloc[i]
+        sku = new_df['SKU'].iloc[i]
+        asin = new_df['ASIN'].iloc[i]
+        fnsku = new_df['FULFILLMENTNETWORKSKU'].iloc[i]
+        quantity_shipped = str(new_df['QUANTITYSHIPPED'].iloc[i])
+        quantity_received = str(new_df['QUANTITYRECEIVED'].iloc[i])
+        status = new_df['SHIPMENTSTATUS'].iloc[i]
+        value = str(new_df['VALUE'].iloc[i])
+        cost_per_unit = new_df['COST_PER_UNIT'].iloc[i]
+        date = new_df['RECEIVED_DATE'].iloc[i].strftime("%Y-%m-%d")
+        quantity = str(new_df['QUANTITY'].iloc[i])
+        running_quantity = str(new_df['RUNNING_QUANTITY'].iloc[i])
+        receipt_cost = str(new_df['RECEIPT_COST'].iloc[i])
+        shipment_name = new_df['SHIPMENT_NAME'].iloc[i]
+        related_product = str(new_df['RECORD_ID'].iloc[i])
+        related_shipment = str(new_df['RECORD_ID_NUM'].iloc[i])
+        related_shipment_sku = str(new_df['SHIPMENT_DETAIL_RECORD_ID'].iloc[i])
+
+        body = {
+            x.upload_data.shipment_receiving.account_name: {"value": account_name},
+            x.upload_data.shipment_receiving.shipment_id: {"value": shipment_id},
+            x.upload_data.shipment_receiving.sku: {"value": sku},
+            x.upload_data.shipment_receiving.asin: {"value": asin},
+            x.upload_data.shipment_receiving.fnsku: {"value": fnsku},
+            x.upload_data.shipment_receiving.quantity_shipped: {"value": quantity_shipped},
+            x.upload_data.shipment_receiving.quantity_received: {"value": quantity_received},
+            x.upload_data.shipment_receiving.status: {"value": status},
+            x.upload_data.shipment_receiving.value: {"value": value},
+            x.upload_data.shipment_receiving.cost_per_unit: {"value": cost_per_unit},
+            x.upload_data.shipment_receiving.date: {"value": date},
+            x.upload_data.shipment_receiving.quantity: {"value": quantity},
+            x.upload_data.shipment_receiving.running_quantity: {"value": running_quantity},
+            x.upload_data.shipment_receiving.receipt_cost: {"value": receipt_cost},
+            x.upload_data.shipment_receiving.shipment_name: {"value": shipment_name},
+            x.upload_data.shipment_receiving.related_product: {"value": related_product},
+            x.upload_data.shipment_receiving.related_shipment: {"value": shipment_id},
+            x.upload_data.shipment_receiving.related_shipment_sku: {"value": related_shipment_sku}
+        }
+        data.append(body)
+        # break
+
+    print_color(data, color='b')
+    if len(data) > 0:
+        QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(
+            table_id=x.shipment_receiving_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.username, password=x.password, filter_val=None, update_type='add_record',
+            data=data, reference_column=None)
+
+
+
+def upload_inventory_data(x, engine):
+    reference_df = get_qb_product_data(x)
 
 
     df = pd.read_sql(f'''select * from quickbase_inventory''', con=engine)
@@ -1225,7 +1319,7 @@ def upload_inventory_data(x, engine):
 
 def upload_factory_pos(x, engine, start_date):
     quickbase_product_data, product_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
-                                                               app_id=x.qb_app_id).get_qb_table_records(
+        app_id=x.qb_app_id).get_qb_table_records(
         table_id=x.product_table_id,
         col_order=x.upload_data.product_fields.col_order,
         filter=x.upload_data.product_fields.filter,
@@ -1245,10 +1339,7 @@ def upload_factory_pos(x, engine, start_date):
     reference_df['ACCOUNT_NAME'] = reference_df['ACCOUNT_NAME'].str.upper()
 
 
-    client_secret_file = f'{x.project_folder}\\Text Files\\client_secret.json'
-    token_file = f'{x.project_folder}\\Text Files\\token.json'
-    sheet_id = '1bFIz-jt-LA7_NaU8EbJCM_HzIFUs0DfAM69foOxQ-Ic'
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+
 
 
     columns = ['Shipped With', 'Location Status', 'Shippin Plan', 'Invoice #', 'Invoice Date', 'Factory Name', 'Contact Person',
@@ -1260,14 +1351,14 @@ def upload_factory_pos(x, engine, start_date):
      'Pick Up Scheduled', 'Delivery Scheduled']
 
     sheetname = 'Completed Shipments'
-    GsheetAPI = GoogleSheetsAPI(client_secret_file,token_file,SCOPES,  sheet_id )
+    GsheetAPI = GoogleSheetsAPI(credentials_file=x.gsheet_credentials_file, token_file=x.gsheet_token_file,
+                                scopes=x.gsheet_scopes, sheet_id=x.gsheet_inventory_list )
     completed_df = GsheetAPI. get_data_from_sheet(sheetname=sheetname, range_name='A:AG')
     for i in range(len(columns) - len(completed_df.columns)):
         completed_df[i] = None
 
     completed_df.columns = columns
     print_color(completed_df, color='r')
-
 
     completed_df.insert(0, "PO Type", "Completed")
 
@@ -1331,7 +1422,7 @@ def upload_factory_pos(x, engine, start_date):
             # if
             print_color(value, color='y')
         # print(value, re.search('[a-zA-Z]', value))
-    new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\ygb po data.csv', index=False)
+    # new_df.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\ygb po data.csv', index=False)
     # print_color(new_df['COMPLETION DATE'].unique(), color='p')
     new_df['COMPLETION DATE'] = pd.to_datetime(new_df['COMPLETION DATE'], errors = 'coerce')
 
@@ -1351,15 +1442,13 @@ def upload_factory_pos(x, engine, start_date):
     for col in ['UNIT PRICE', 'INVOICE AMOUNT', 'DEPOSIT SENT', 'BALANCE OWED', 'QTY']:
         new_df[col] =  new_df[col].str.replace("$","").str.replace(",","")
 
-    # print_color(new_df.shape[0], color='b')
 
-    sheet_id = '1zn0oOjftd3bJxCNh2T2gGQGZrJEy4jYJDSgCkDtLO3I'
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
     columns = []
 
     sheetname = 'COGs'
-    cogs_df = GoogleSheetsAPI(client_secret_file, token_file, SCOPES, sheet_id).get_data_from_sheet(
+    cogs_df = GoogleSheetsAPI(credentials_file=x.gsheet_credentials_file, token_file=x.gsheet_token_file,
+                                scopes=x.gsheet_scopes, sheet_id=x.gsheet_inventory_assets).get_data_from_sheet(
         sheetname=sheetname, range_name='A:W')
     cogs_df.columns = [x.upper() for x in  cogs_df.columns]
     print_color(cogs_df, color='r')
@@ -1370,19 +1459,23 @@ def upload_factory_pos(x, engine, start_date):
     # completed_df.columns = columns
     # print_color(completed_df, color='r')
 
-    cogs_df = cogs_df[['SKU', 'CONTAINER_#','DUTIES','CUSTOMS_FEES' , 'DEMURRAGE' , 'CONTAINER_COST', 'TRUCKING_COST']]
+    cogs_df = cogs_df[['SKU','ASIN', 'QTY', 'CONTAINER_#','DUTIES','CUSTOMS_FEES' , 'DEMURRAGE' , 'CONTAINER_COST', 'TRUCKING_COST']]
     # cogs_df = cogs_df.str.replace("$", "")
     cogs_df['SKU'] = cogs_df['SKU'].apply(lambda x: x.strip() if x is not None else x)
     cogs_df['CONTAINER_#'] = cogs_df['CONTAINER_#'].apply(lambda x: x.strip() if x is not None else x)
+    print_color(new_df.shape[0], color='y')
 
-    new_df = new_df.merge(cogs_df, how='left', left_on=['SKU', 'CONTAINER #'], right_on=['SKU', 'CONTAINER_#'])
+    print_color(cogs_df.columns, color='g')
+    print_color(new_df.columns, color='y')
+
+    new_df = new_df.merge(cogs_df, how='left', left_on=['CONTAINER #', 'SKU', 'ASIN', 'QTY'], right_on=['CONTAINER_#', 'SKU', 'ASIN', 'QTY'])
     new_df['DUTIES'] = new_df['DUTIES'].str.replace("$", "").str.replace(",", "").fillna(0)
     new_df['CUSTOMS_FEES'] = new_df['CUSTOMS_FEES'].str.replace("$", "").str.replace(",", "").fillna(0)
     new_df['DEMURRAGE'] = new_df['DEMURRAGE'].str.replace("$", "").str.replace(",", "").fillna(0)
     new_df['CONTAINER_COST'] = new_df['CONTAINER_COST'].str.replace("$", "").str.replace(",", "").fillna(0)
     new_df['TRUCKING_COST'] = new_df['TRUCKING_COST'].str.replace("$", "").str.replace(",", "").fillna(0)
 
-    print_color(new_df, color='y')
+    print_color(new_df.shape[0], color='y')
 
     # new_df['REMARKS'] = new_df['REMARKS'].fillna("",inplace=True)
     # new_df.to_csv(f'C:\\users\\ricky\\desktop\\google_sheet_data.csv', index=False)
@@ -1390,7 +1483,7 @@ def upload_factory_pos(x, engine, start_date):
     data = []
 
     # new_df = new_df.iloc[45:46]
-    # print(new_df['LOCATION STATUS'].unique())
+    print(new_df['LOCATION STATUS'].unique())
     for i in range(new_df.shape[0]):
         po_status = str(new_df['PO TYPE'].iloc[i])
         related_product = str(new_df['RECORD_ID'].iloc[i])
@@ -1483,8 +1576,6 @@ def upload_factory_pos(x, engine, start_date):
             x.upload_data.factory_po_fields.container_cost: {"value": container_cost},
             x.upload_data.factory_po_fields.trucking_cost: {"value": trucking_cost},
             x.upload_data.factory_po_fields.confirmation_for_payment: {"value": confirmation_for_payment},
-
-
         }
         data.append(body)
         # break
@@ -1503,6 +1594,191 @@ def upload_factory_pos(x, engine, start_date):
             table_id=x.factory_pos_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
             username=x.username, password=x.password, filter_val=None, update_type='add_record',
             data=data, reference_column=None)
+
+
+def upload_document_links(x, engine):
+    quickbase_factory_po_data, quickbase_factory_po_column_dict = QuickbaseAPI(hostname=x.qb_hostname,
+        auth=x.qb_auth, app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.factory_pos_table_id,
+        col_order=x.upload_data.factory_po_fields.col_order,
+        filter=x.upload_data.factory_po_fields.filter,
+        field_id=x.upload_data.factory_po_fields.field_id,
+        filter_type=x.upload_data.factory_po_fields.filter_type,
+        filter_operator=x.upload_data.factory_po_fields.filter_operator
+    )
+    print_color(quickbase_factory_po_data, color='y')
+
+    record_id_column = quickbase_factory_po_column_dict.get(x.upload_data.factory_po_fields.record_id)
+    container_column = quickbase_factory_po_column_dict.get(x.upload_data.factory_po_fields.container_number)
+    sku_column = quickbase_factory_po_column_dict.get(x.upload_data.factory_po_fields.sku)
+    asin_column = quickbase_factory_po_column_dict.get(x.upload_data.factory_po_fields.asin)
+    qty_column = quickbase_factory_po_column_dict.get(x.upload_data.factory_po_fields.qty)
+    fba_shipment_id_column = quickbase_factory_po_column_dict.get(x.upload_data.factory_po_fields.fba_shipment_id)
+
+
+    quickbase_shipment_data, quickbase_shipment_column_dict = QuickbaseAPI(hostname=x.qb_hostname,
+        auth=x.qb_auth, app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.shipment_table_id,
+        col_order=x.upload_data.shipment_fields.col_order,
+        filter=x.upload_data.shipment_fields.filter,
+        field_id=x.upload_data.shipment_fields.field_id,
+        filter_type=x.upload_data.shipment_fields.filter_type,
+        filter_operator=x.upload_data.shipment_fields.filter_operator
+    )
+    # print_color(quickbase_shipment_data, color='r')
+    print_color(quickbase_factory_po_data.columns, color='r')
+
+    shipment_id_column = quickbase_shipment_column_dict.get(x.upload_data.shipment_fields.shipment_id)
+
+    GsheetAPI = GoogleSheetsAPI(credentials_file=x.gsheet_credentials_file, token_file=x.gsheet_token_file,
+                                scopes=x.gsheet_scopes, sheet_id=x.gsheet_inventory_assets)
+
+    '''COGS URLS'''
+    cogs_df = GsheetAPI.get_data_from_sheet(sheetname='COGs', range_name='A:W',get_hyperlinks=True)
+    cogs_df.columns = [x.upper() for x in cogs_df.columns]
+    cogs_df['index_col'] = cogs_df.index
+
+    # cogs_df = cogs_df[['SKU', 'CONTAINER_#', 'DUTIES', 'CUSTOMS_FEES', 'DEMURRAGE', 'CONTAINER_COST', 'TRUCKING_COST']]
+    cogs_df['SKU'] = cogs_df['SKU'].apply(lambda x: x.strip() if x is not None else x)
+    cogs_df['CONTAINER_#'] = cogs_df['CONTAINER_#'].apply(lambda x: x.strip() if x is not None else x)
+
+    quickbase_factory_po_data[qty_column] =  quickbase_factory_po_data[qty_column].astype(int)
+    quickbase_factory_po_data[qty_column] = quickbase_factory_po_data[qty_column].astype(str)
+    cogs_df['QTY'] = cogs_df['QTY'].astype(str)
+    print_color(quickbase_factory_po_data[[record_id_column, container_column, sku_column, asin_column, qty_column]], color='b')
+    print_color(cogs_df[['CONTAINER_#', 'SKU', 'ASIN', 'QTY']],color='b')
+
+    print_color(cogs_df.shape[0], color='y')
+    cogs_df = cogs_df.merge(quickbase_factory_po_data[[record_id_column, container_column, sku_column, asin_column, qty_column, fba_shipment_id_column]],
+                            left_on=['CONTAINER_#', 'SKU', 'ASIN', 'QTY'],
+                            right_on=[container_column, sku_column, asin_column, qty_column], how='left')
+    print_color(cogs_df.shape[0], color='y')
+
+    cogs_df = cogs_df.dropna(subset=[record_id_column])
+    cogs_maping_dict = {"DUTIES":"G",
+                        "CUSTOMS_FEES": "J",
+                        "DEMURRAGE": "K",
+                        "CONTAINER_COST": "R",
+                        "TRUCKING_COST": "S"
+                        }
+    data = []
+    for i in range(cogs_df.shape[0]):
+        related_record_id = cogs_df[record_id_column].iloc[i]
+        index_value = cogs_df['index_col'].iloc[i] +1
+        fba_shipment_id_value = cogs_df[fba_shipment_id_column].iloc[i]
+        for key, val in cogs_maping_dict.items():
+            file_url = f"https://docs.google.com/spreadsheets/d/{x.gsheet_inventory_assets}/edit?pli=1#gid={x.upload_data.gsheet_inventory_assets.cogs_gid}&range={val}{index_value}"
+            print_color(file_url, color='y')
+            body = {
+                x.upload_data.document_fields.file: {"value": file_url},
+                x.upload_data.document_fields.related_factory_po: {"value": related_record_id},
+                x.upload_data.document_fields.related_shipment: {"value": fba_shipment_id_value},
+                x.upload_data.document_fields.type: {"value": "COGS"},
+                x.upload_data.document_fields.sheet_name: {"value": "COGS"},
+                x.upload_data.document_fields.column: {"value": key}
+            }
+
+            data.append(body)
+    print_color(data, color='b')
+    if len(data) > 0:
+        QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
+            table_id=x.documents_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.qb_username, password=x.qb_password,
+            filter_val='COGS',
+            reference_column=x.upload_data.document_fields.type
+        )
+        QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(
+            table_id=x.documents_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.username, password=x.password, filter_val=None, update_type='add_record',
+            data=data, reference_column=None)
+
+    '''FREIGHT OUT'''
+    freight_out_df = GsheetAPI.get_data_from_sheet(sheetname='Freight Out', range_name='A:I')
+    print_color(freight_out_df, color='r')
+    freight_out_df['customer_ref_|_fba_id'] = freight_out_df['customer_ref_|_fba_id'].apply(lambda x: x.split(",") if "," in x else x.split("|") if "|" in x else x )
+
+    freight_out_df['index_col'] = freight_out_df.index
+    freight_out_df = freight_out_df.explode('customer_ref_|_fba_id').reset_index(drop=True)
+    freight_out_df['customer_ref_|_fba_id'] = freight_out_df['customer_ref_|_fba_id'].str.strip()
+
+    print_color(freight_out_df, color='r')
+    data= []
+    for i in range(freight_out_df.shape[0]):
+
+        index_value = freight_out_df['index_col'].iloc[i] +1
+        fba_shipment_id_value = freight_out_df['customer_ref_|_fba_id'].iloc[i]
+
+        file_url = f"https://docs.google.com/spreadsheets/d/{x.gsheet_inventory_assets}/edit?pli=1#gid={x.upload_data.gsheet_inventory_assets.freight_out_gid}&range=I{index_value}"
+        print_color(file_url, color='y')
+        body = {
+            x.upload_data.document_fields.file: {"value": file_url},
+            # x.upload_data.document_fields.related_factory_po: {"value": related_record_id},
+            x.upload_data.document_fields.related_shipment: {"value": fba_shipment_id_value},
+            x.upload_data.document_fields.type: {"value": "Freight Out"},
+            x.upload_data.document_fields.sheet_name: {"value": "Freight Out"},
+            x.upload_data.document_fields.column: {"value": "Invoice"}
+        }
+
+        data.append(body)
+    print_color(data, color='b')
+    if len(data) > 0:
+        QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
+            table_id=x.documents_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.qb_username, password=x.qb_password,
+            filter_val='Freight Out',
+            reference_column=x.upload_data.document_fields.type
+        )
+        QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(
+            table_id=x.documents_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.username, password=x.password, filter_val=None, update_type='add_record',
+            data=data, reference_column=None)
+
+    '''FREIGHT IN'''
+    freight_in_df = GsheetAPI.get_data_from_sheet(sheetname='Freight In', range_name='A:H')
+    freight_in_df['index_col'] = freight_in_df.index
+    freight_in_df = freight_in_df.merge(quickbase_factory_po_data[[record_id_column, container_column]], left_on='customer_ref', right_on=container_column, how='left')
+    freight_in_df = freight_in_df.dropna(subset=[record_id_column])
+    print_color(freight_in_df, color='y')
+
+    data= []
+    for i in range(freight_in_df.shape[0]):
+
+        index_value = freight_in_df['index_col'].iloc[i] +1
+        record_id_value = freight_in_df[record_id_column].iloc[i]
+
+        file_url = f"https://docs.google.com/spreadsheets/d/{x.gsheet_inventory_assets}/edit?pli=1#gid={x.upload_data.gsheet_inventory_assets.freight_in_gid}&range=H{index_value}"
+        print_color(file_url, color='y')
+        body = {
+            x.upload_data.document_fields.file: {"value": file_url},
+            x.upload_data.document_fields.related_factory_po: {"value": record_id_value},
+            # x.upload_data.document_fields.related_shipment: {"value": fba_shipment_id_value},
+            x.upload_data.document_fields.type: {"value": "Freight In"},
+            x.upload_data.document_fields.sheet_name: {"value": "Freight In"},
+            x.upload_data.document_fields.column: {"value": "Invoice Links"}
+        }
+
+        data.append(body)
+    print_color(data, color='b')
+    if len(data) > 0:
+        QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth, app_id=x.qb_app_id).purge_table_records(
+            table_id=x.documents_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.qb_username, password=x.qb_password,
+            filter_val='Freight In',
+            reference_column=x.upload_data.document_fields.type
+        )
+        QuickbaseAPI(x.qb_hostname, x.qb_auth, x.qb_app_id).create_qb_table_records(
+            table_id=x.documents_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
+            username=x.username, password=x.password, filter_val=None, update_type='add_record',
+            data=data, reference_column=None)
+
+
+
+
+    # push_data_to_sql(engine=engine, project_name=x.project_name, table_name='product_cogs', df=cogs_df)
+    #
+
+    # #
+    # # print_color(cogs_df, color='b')
 
 
 def import_factory_pos(x, engine):
@@ -1527,6 +1803,57 @@ def import_factory_pos(x, engine):
               dtype=sql_types)
 
     print_color(f'Quickbase PO Data imported to SQL', color='y')
+
+
+def import_quickbase_product_data(x, engine):
+    quickbase_po_data, po_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
+        app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.product_table_id,
+        col_order=x.upload_data.product_fields.col_order,
+        filter=x.upload_data.product_fields.filter,
+        field_id=x.upload_data.product_fields.field_id,
+        filter_type=x.upload_data.product_fields.filter_type,
+        filter_operator=x.upload_data.product_fields.filter_operator
+    )
+
+    print_color(quickbase_po_data,  color='r')
+    table_name = 'ygb_quickbase_product_data'
+    if inspect(engine).has_table(table_name):
+        engine.connect().execute(f'Drop Table if exists {table_name}')
+    sql_types = Get_SQL_Types(quickbase_po_data).data_types
+    Change_Sql_Column_Types(engine=engine, Project_name=x.project_name, Table_Name=table_name,
+                                             DataTypes=sql_types, DataFrame=quickbase_po_data)
+    quickbase_po_data.to_sql(name=table_name, con=engine, if_exists='append', index=False, schema=x.project_name, chunksize=1000,
+              dtype=sql_types)
+
+    run_sql_scripts(engine=engine, scripts=[f'Create index product on ygb_quickbase_product_data(ACCOUNT_NAME, sku, asin)'])
+    print_color(f'Quickbase Product Data imported to SQL', color='y')
+
+
+def import_quickbase_order_data(x, engine):
+    quickbase_order_data, order_column_dict = QuickbaseAPI(hostname=x.qb_hostname, auth=x.qb_auth,
+                                                     app_id=x.qb_app_id).get_qb_table_records(
+        table_id=x.sales_table_id,
+        col_order=x.upload_data.sales_fields_2.col_order,
+        filter=x.upload_data.sales_fields_2.filter,
+        field_id=x.upload_data.sales_fields_2.field_id,
+        filter_type=x.upload_data.sales_fields_2.filter_type,
+        filter_operator=x.upload_data.sales_fields_2.filter_operator
+    )
+
+    print_color(quickbase_order_data, color='r')
+    table_name = 'ygb_quickbase_order_data'
+    if inspect(engine).has_table(table_name):
+        engine.connect().execute(f'Drop Table if exists {table_name}')
+    sql_types = Get_SQL_Types(quickbase_order_data).data_types
+    Change_Sql_Column_Types(engine=engine, Project_name=x.project_name, Table_Name=table_name,
+                            DataTypes=sql_types, DataFrame=quickbase_order_data)
+    quickbase_order_data.to_sql(name=table_name, con=engine, if_exists='append', index=False, schema=x.project_name,
+                             chunksize=1000,
+                             dtype=sql_types)
+
+    run_sql_scripts(engine=engine, scripts=[f'create index order_mapping on ygb_quickbase_order_data(Source,`amazon-order-id`, asin, sku, `order-status`)'])
+    print_color(f'Quickbase Order Data imported to SQL', color='y')
 
 
 def factory_order_assignments(x, engine):
@@ -1586,12 +1913,12 @@ def factory_order_assignments(x, engine):
 
     print_color(df, color='y')
     print_color(df.shape[0], color='y')
-    df = df.merge(quickbase_product_data, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
-    # df = df.merge(quickbase_po_data, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'FBA_SHIPMENT_ID'], right_on=['ACCOUNT_NAME', 'SKU', 'FBA_SHIPMENT_ID'])
-    # quickbase_po_data.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\assignment_data.csv', index=False)
-    df.rename(columns={'RECORD_ID': 'PRODUCT_RECORD_ID'}, inplace=True)
-    # df.rename(columns={'RECORD_ID_NUM': 'FBA_SHIPMENT_RECORD_ID'}, inplace=True)
-    # print_color(df.columns, color='r')
+    # df = df.merge(quickbase_product_data, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'ASIN'], right_on=['ACCOUNT_NAME', 'SKU', 'ASIN'])
+    # # df = df.merge(quickbase_po_data, how='left', left_on=['ACCOUNT_NAME', 'SKU', 'FBA_SHIPMENT_ID'], right_on=['ACCOUNT_NAME', 'SKU', 'FBA_SHIPMENT_ID'])
+    # # quickbase_po_data.to_csv(f'C:\\users\\{getpass.getuser()}\\desktop\\assignment_data.csv', index=False)
+    # df.rename(columns={'RECORD_ID': 'PRODUCT_RECORD_ID'}, inplace=True)
+    # # df.rename(columns={'RECORD_ID_NUM': 'FBA_SHIPMENT_RECORD_ID'}, inplace=True)
+    # # print_color(df.columns, color='r')
 
 
     QBapi.purge_table_records(table_id=x.unit_ledger_table_id, user_token=x.qb_user_token, apptoken=x.qb_app_token,
@@ -1625,6 +1952,7 @@ def factory_order_assignments(x, engine):
             demmurage = str(new_df['DEMMURAGE'].iloc[j])
             container_cost = str(new_df['CONTAINER_COST'].iloc[j])
             trucking_cost = str(new_df['TRUCKING_COST'].iloc[j])
+            related_order = str(new_df['ORDER_RECORD_ID'].iloc[j])
 
             body = {
 
@@ -1644,7 +1972,9 @@ def factory_order_assignments(x, engine):
                 x.upload_data.unit_ledger_fields.customs_fees: {"value": customs_fees},
                 x.upload_data.unit_ledger_fields.demmurage: {"value": demmurage},
                 x.upload_data.unit_ledger_fields.container_cost: {"value": container_cost},
-                x.upload_data.unit_ledger_fields.trucking_cost: {"value": trucking_cost}
+                x.upload_data.unit_ledger_fields.trucking_cost: {"value": trucking_cost},
+                x.upload_data.unit_ledger_fields.related_order: {"value": related_order},
+
             }
             qb_data.append(body)
             # break

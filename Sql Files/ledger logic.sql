@@ -1,15 +1,13 @@
 use ybg_group_amazon_seller_central;
 
-set @start_date:= "2022-11-01";
+set @start_date:= "2023-12-29";
 update ygb_quickbase_po_data set Eta = "2023-10-04" where PO_Status= "Completed" and ETA = "";
-
 
 drop table if exists ygb_quickbase_active_sku_list;
 create table if not exists ygb_quickbase_active_sku_list(primary key(account_name, sku))
 select  account_name, SKU, ASIN from product_data
 where sku in (select distinct sku from ygb_quickbase_po_data where ETA >= @start_date)
 group by  account_name, SKU;
-
 
 
 drop table if exists ygb_inventory_ledger_summary;
@@ -74,24 +72,19 @@ group by  ACCOUNT_NAME, `ORDER-ID`, date, SKU;
 drop table if exists ygb_inventory_ledger_receipts;
 create table if not exists ygb_inventory_ledger_receipts
 select B.*, ifnull(lag(Rolling_Qty, 1) over(partition by Account_Name, sku order by id),0) as Last_Rolling_qty from
-(select A.*, sum(QTY) over(partition by Account_Name, sku order by id) as Rolling_Qty from
+(select A.*, sum(QTY) over(partition by Account_Name, sku, asin order by id) as Rolling_Qty from
 (select row_number() over (partition by A.Account_Name, A.sku order by  A.Account_Name, A.sku, ETA) as ID, A.Account_Name,Record_ID_Num, FBA_Shipment_ID,ETA, A.sku, a.asin, "Received",  PO_Status, QTY  ,
 Unit_Price, Duties / QTY as Duties, Customs_Fees / QTY as Customs_Fees, Demmurage / QTY as Demmurage, Container_Cost/ QTY as Container_Cost, Trucking_Cost / QTY as Trucking_Cost
-
 from ygb_quickbase_po_data A
 inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
-where  PO_Status = "Completed" and FBA_Shipment_ID != "" and ETA >= @start_date) A) B;
+where  PO_Status = "Completed" and FBA_Shipment_ID != "" and ETA >= @start_date
+union
+select null as id, Account_Name, null as Record_ID_Num, "Starting Inventory" as FBA_Shipment_ID, "2023-12-29" as ETA,
+SKU, asin, "Received" as Received, "Completed" as PO_Status, starting_inventory as QTY, 0 as Unit_Price, 0 as Duties,0 as Customs_Fees,0 as Demmurage,0 as Container_Cost,0 as Trucking_Cost
+ from ygb_quickbase_product_data where starting_inventory >0 and starting_inventory is not null
+) A) B;
 
 
--- drop table if exists ygb_inventory_ledger_removals;
--- create table if not exists ygb_inventory_ledger_removals
--- select a.Account_Name, `ORDER-ID`, date(`REQUEST-DATE`) as date, a.SKU,B.ASIN as asin, `ORDER-TYPE`, `ORDER-STATUS`, -`SHIPPED-QUANTITY`
--- from fba_removal_order_detail A
--- inner join ygb_quickbase_active_sku_list B on A.account_name = b.account_name  and a.sku = b.sku
--- where date(`REQUEST-DATE`) >=  @start_date
--- and `ORDER-STATUS` in ("Completed")
--- and `SHIPPED-QUANTITY` != 0
--- ;
 
 
 drop table if exists ygb_inventory_ledger_removals;
@@ -136,9 +129,30 @@ update ygb_inventory_ledger_detail A inner join
 (select *, ifnull(lag(rolling_qty, 1) over(partition by account_name, sku order by  account_name, sku, date, `AMAZON-ORDER-ID`),0) as Last_Rolling from ygb_inventory_ledger_detail) B using(id)
 Set a.last_rolling_qty = B.Last_Rolling;
 
+Create index product on ygb_inventory_ledger_detail(ACCOUNT_NAME, sku, asin);
+
 drop table if exists ygb_inventory_ledger_assignment;
 create table if not exists ygb_inventory_ledger_assignment
-select A.*, B.record_id_num,  B.FBA_Shipment_ID, B.Rolling_Qty as PO_Rolling_Qty, B.Last_Rolling_qty as PO_Last_Rolling_qty,
-B.Unit_Price, B.Duties, B.Customs_Fees, B.Demmurage, B.Container_Cost, B.Trucking_Cost
+
+select A.*, C.Starting_Inventory, B.record_id_num,  B.FBA_Shipment_ID, B.Rolling_Qty as PO_Rolling_Qty, B.Last_Rolling_qty as PO_Last_Rolling_qty,
+B.Unit_Price, B.Duties, B.Customs_Fees, B.Demmurage, B.Container_Cost, B.Trucking_Cost,
+C.Record_ID_Num as PRODUCT_RECORD_ID,
+D.Record_ID_Num as ORDER_RECORD_ID
 from ygb_inventory_ledger_detail A 
-left join ygb_inventory_ledger_receipts B on A.Account_Name = B.Account_Name and A.sku = B.sku and A.rolling_qty <= B.rolling_qty and greatest(A.rolling_qty,0) >= B.last_rolling_qty;
+left join ygb_quickbase_product_data C using(ACCOUNT_NAME, sku, asin)
+left join ygb_inventory_ledger_receipts B on A.Account_Name = B.Account_Name and A.sku = B.sku and a.asin = b.asin and A.rolling_qty <= B.rolling_qty and greatest(A.rolling_qty,0) >= B.last_rolling_qty
+left join ygb_quickbase_order_data D on A.Account_Name = D.Source and A.`amazon-order-id` = D.`amazon-order-id` and a.asin = D.asin and a.sku = D.sku and A.`order-status`= D.`order-status`;
+
+
+-- case when 
+
+-- select * from ygb_inventory_ledger_detail
+-- 111-7830990-5385845	2023-12-29	Bds-654	B082Xltdjn
+
+-- create index order_mapping2 on ygb_quickbase_order_data(Source,`amazon-order-id`, asin, sku, `order-status`);
+-- create index order_mapping on ygb_quickbase_order_data(Source,`amazon-order-id`, asin, sku``);
+-- select * from ygb_quickbase_product_data  where sku = "Bds-654";
+-- select * from ygb_inventory_ledger_detail  where sku = "Bds-654";
+-- select * from ygb_inventory_ledger_receipts  where sku = "Bds-654";
+-- select * from ygb_inventory_ledger_assignment where sku = "Bds-654";
+-- select * from ygb_inventory_ledger_assignment where sku = "Bds-654";

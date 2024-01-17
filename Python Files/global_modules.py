@@ -61,11 +61,21 @@ class ProgramCredentials:
         self.shipment_table_id = f['shipment_table_id']
         self.shipment_detail_table_id = f['shipment_detail_table_id']
         self.shipment_tracking_table_id = f['shipment_tracking_table_id']
+        self.shipment_receiving_table_id = f['shipment_receiving_table_id']
 
         self.product_table_id = f['product_table_id']
         self.fba_inventory_table_id = f['fba_inventory_table_id']
         self.order_fees_table_id = f['order_fees_table_id']
         self.unit_ledger_table_id = f['unit_ledger_table_id']
+        self.documents_table_id = f['documents_table_id']
+
+        self.gsheet_credentials_file = f['gsheet_credentials_file'].replace("%USERNAME%", getpass.getuser())
+        self.gsheet_token_file = f['gsheet_token_file'].replace("%USERNAME%", getpass.getuser())
+        self.gsheet_scopes = f['gsheet_scopes']
+        self.gsheet_inventory_list = f['gsheet_inventory_list']
+        self.gsheet_inventory_assets = f['gsheet_inventory_assets']
+        self.gsheet_dashboard_id = f['gsheet_dashboard_id']
+        self.gsheet_gid = f['gsheet_gid']
 
         self.outbound_email = f['outbound_email']
         self.inbound_email = f['inbound_email']
@@ -76,6 +86,7 @@ class ProgramCredentials:
         self.password = f['password']
         self.port = f['port']
         self.project_folder = f['project_folder'].replace("%USERNAME%",getpass.getuser())
+        self.sql_folder = f['sql_folder'].replace("%USERNAME%", getpass.getuser())
 
         self.upload_data = self.set_attributes(f['upload_data'])
 
@@ -330,90 +341,136 @@ class Change_Sql_Column_Types():
 
 
 class Add_Sql_Missing_Columns():
-    def __init__(self, engine='',Project_name='', Table_Name='', DataFrame=''):
+    def __init__(self, engine='',Project_name='', Table_Name='', DataFrame='', sql_types=None):
         ''' CHECK IF THE TABLE EXISTS'''
-        # print(Project_name, Table_Name)
-        script = f'SELECT Table_Schema, Table_Name From information_schema.tables where TABLE_SCHEMA = "{Project_name}" and TABLE_NAME = "{Table_Name}"'
-        df1 = pd.read_sql(script, con=engine)
-        if df1.shape[0] == 1:
+
+        print_color(f'Running SQL Missing Columns Method', color='y')
+
+        if inspect(engine).has_table(Table_Name):
             ''' IF THE TABLE EXISTS GET THE FIRST ROW OF THAT TABLE'''
             script1 = f'Select column_name AS `COLUMN` From information_schema.columns b1 where b1.table_schema = "{Project_name}" And b1.table_name ="{Table_Name}" order by ORDINAL_POSITION;'
-
             df2 = pd.read_sql(script1, con=engine)
-            # print(df2)
 
             ''' CONVERT COLUMN NAMES OF BOTH THE DATAFRAME BEING ASSESED AND THE TABLE IMPORTED
                 MAKES THE LIST VALUES ALL LOWERCASE            
             '''
             col_dict = {}
-            col_one_list = [x.lower() for x in DataFrame.columns]
+            col_one_list = [x.upper() for x in DataFrame.columns]
             for col in DataFrame.columns.tolist():
-                new_col = col.lower()
+                new_col = col.upper()
                 col_dict.update({new_col:col})
 
-            col_two_list = df2['COLUMN'].str.lower().tolist()
+            col_two_list = df2['COLUMN'].str.upper().tolist()
             ''' GET THE DIFFERENCE OF COLUMNS IF THERE IS A DIFFERENCE AND INPUT INTO A LIST'''
             col_diff = list(set(col_one_list).difference(set(col_two_list)))
-            # print(col_one_list)
-            # print(col_two_list)
+            col_diff.sort()
+            combined_list = col_one_list
+            combined_list.extend(x for x in col_two_list if x not in col_one_list)
+            combined_list.sort()
+
+            # print_color(combined_list, color='g')
+
             if col_diff != []:
                 print_color('Difference of Columns',col_diff, color='b')
+                # print_color(col_dict, color='r')
 
             columnLengths = np.vectorize(len)
-            for column in col_diff:
-                script2 = ""
-                col = col_dict.get(column)
+            if len(col_diff) >0:
+                script2 = f'Alter Table {Table_Name}\n'
 
+            for i, column in enumerate(col_diff):
+                col = col_dict.get(column)
+                # print_color(col, color='b')
                 Col_Length = columnLengths(DataFrame[col].values.astype(str)).max(axis=0)
                 Col_Type = DataFrame[col].dtypes
                 # print(Col_Type, Col_Length)
-                if Col_Type == "object":
-                    if Col_Length > 255:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` TEXT'
-                    elif Col_Length >= 100:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(255)'
-                    elif Col_Length >= 50:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(100)'
-                    elif Col_Length >= 25:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(50)'
-                    elif Col_Length >= 15:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(25)'
-                    elif Col_Length >= 10:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(15)'
-                    elif Col_Length >= 5:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(10)'
-                    elif Col_Length >= 0:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` VARCHAR(5)'
-                if Col_Type == "float" or Col_Type == "float64":
-                    new_data = DataFrame[col].to_frame()
-                    new_data = new_data.fillna(0)
-                    new_data[col] = new_data[col].astype(str)
-                    new = new_data[col].str.split(".", n=1, expand=True)
-                    new.columns = ["First", "Second"]
-                    Decimal_Depth = columnLengths(new['Second'].values.astype(str)).max(axis=0)
-                    if Decimal_Depth <= 2:
-                        if Col_Length <= 10:
-                            script2 = f'Alter Table {Table_Name} add column `{col}` FLOAT(12,2)'
-                        elif Col_Length <= 20:
-                            script2 = f'Alter Table {Table_Name} add column `{col}` FLOAT(20,2)'
-                    else:
-                        if Col_Length <= 10:
-                            script2 = f'Alter Table {Table_Name} add column `{col}` FLOAT(12,4)'
-                        elif Col_Length <= 20:
-                            script2 = f'Alter Table {Table_Name} add column `{col}` FLOAT(20,4)'
-                if  Col_Type == "int8" or Col_Type == "int16" or Col_Type == "int32" or Col_Type == "int64":
-                    if Col_Length >= 10:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` BIGINT'
-                    else:
-                        script2 = f'Alter Table {Table_Name} add column `{col}` INT'
-                if Col_Type == "datetime64[ns]" or Col_Type == "datetime64":
-                    script2 = f'Alter Table {Table_Name} add column `{col}` DATE'
-                if Col_Type == "bool":
-                    script2 = f'Alter Table {Table_Name} add column `{col}` BOOL'
-                print_color(script2, color='y')
-                if script2 != "":
-                    engine.connect().execute(script2)
+                col= col.upper()
 
+
+                prior_column_index = combined_list.index(col) - 1
+                if prior_column_index >=0:
+                    prior_column = f'After `{combined_list[prior_column_index]}`'
+                else:
+                    prior_column = ''
+                print_color(f'{col} {Col_Type} {Col_Length}', color='r')
+
+                print_color(f'prior_column {prior_column}', color='r')
+                print_color(f'sql_types {sql_types}', color='y')
+
+                if sql_types is not None:
+                    print("Right Here")
+                    if sql_types.get(col) == 'TEXT':
+                        script2 += f'add column `{col}` TEXT {prior_column}'
+                    elif Col_Type == "object":
+                        print_color(f'Here', color='g')
+                        if Col_Length > 255:
+                            script2 += f'add column `{col}` TEXT {prior_column}'
+                        elif Col_Length >= 100:
+                            script2 += f'add column `{col}` VARCHAR(255) {prior_column}'
+                        elif Col_Length >= 50:
+                            script2 += f'add column `{col}` VARCHAR(100) {prior_column}'
+                        elif Col_Length >= 25:
+                            script2 += f'add column `{col}` VARCHAR(50) {prior_column}'
+                        elif Col_Length >= 15:
+                            script2 += f'add column `{col}` VARCHAR(25) {prior_column}'
+                        elif Col_Length >= 10:
+                            script2 += f'add column `{col}` VARCHAR(15) {prior_column}'
+                        elif Col_Length >= 5:
+                            script2 += f'add column `{col}` VARCHAR(10) {prior_column}'
+                        elif Col_Length >= 0:
+                            print_color(f'Here', color='g')
+                            script2 += f'add column `{col}` VARCHAR(10) {prior_column}'
+                        else:
+                            script2 += f'add column `{col}` VARCHAR(10) {prior_column}'
+                    elif Col_Type in ["float","float64"]:
+                        new_data = DataFrame[col].to_frame()
+                        new_data = new_data.fillna(0)
+                        new_data[col] = new_data[col].astype(str)
+                        new = new_data[col].str.split(".", n=1, expand=True)
+                        new.columns = ["First", "Second"]
+                        Decimal_Depth = columnLengths(new['Second'].values.astype(str)).max(axis=0)
+                        if Decimal_Depth <= 2:
+                            if Col_Length <= 10:
+                                script2 += f'add column `{col}` FLOAT(12,2) {prior_column}'
+                            elif Col_Length <= 20:
+                                script2 += f'add column `{col}` FLOAT(20,2) {prior_column}'
+                        else:
+                            if Col_Length <= 10:
+                                script2 += f'add column `{col}` FLOAT(12,4) {prior_column}'
+                            elif Col_Length <= 20:
+                                script2 += f'add column `{col}` FLOAT(20,4) {prior_column}'
+                    elif Col_Type in ["int8","int16","int32","int64"]:
+                        if Col_Length >= 10:
+                            script2 += f'add column `{col}` BIGINT {prior_column}'
+                        else:
+                            script2 += f'add column `{col}` INT {prior_column}'
+                    elif Col_Type in ["datetime64[ns]" ,"datetime64", "datetime64[ns, UTC]", "datetime64[ns, UTC]"]:
+                        script2 += f'add column `{col}` DATE {prior_column}'
+                    elif Col_Type == "bool":
+                        script2 += f'add column `{col}` BOOL {prior_column}'
+                    if i != len(col_diff)-1:
+                        script2 +=",\n"
+
+                # if script2 != "":
+                #     engine.connect().execute(script2)
+
+            if len(col_diff) > 0:
+                print_color(script2, color='y')
+                run_sql_scripts(engine=engine, scripts=[script2])
+
+        print_color(f'SQL Missing Columns Method Complete', color='g')
+
+
+
+def push_data_to_sql(engine, project_name, table_name, df):
+    sql_types = Get_SQL_Types(df).data_types
+    print_color(f'sql_types {sql_types}', color='b')
+    Change_Sql_Column_Types(engine=engine, Project_name=project_name, Table_Name=table_name,
+                                             DataTypes=sql_types, DataFrame=df)
+    Add_Sql_Missing_Columns(engine=engine, Project_name=project_name, Table_Name=table_name,
+                                             DataFrame=df, sql_types=sql_types)
+    df.to_sql(name=table_name, con=engine, if_exists='append', index=False, schema=project_name, chunksize=1000,
+              dtype=sql_types)
 
 def log_sql_scripts(log_scripts=False, log_engine=None, log_database=None,  script_name=None, profile_name=None, project_name=None, company_name=None,
                     query=None, start_time=None, end_time=None, duration=None):
