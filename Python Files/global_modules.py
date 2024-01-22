@@ -74,7 +74,10 @@ class ProgramCredentials:
         self.gsheet_scopes = f['gsheet_scopes']
         self.gsheet_inventory_list = f['gsheet_inventory_list']
         self.gsheet_inventory_assets = f['gsheet_inventory_assets']
+
         self.gsheet_dashboard_id = f['gsheet_dashboard_id']
+        self.gsheet_dashboard_sheet_name = f['gsheet_dashboard_sheet_name']
+
         self.gsheet_gid = f['gsheet_gid']
 
         self.outbound_email = f['outbound_email']

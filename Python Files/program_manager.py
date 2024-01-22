@@ -62,11 +62,8 @@ def run_program(environment):
     import_factory_pos(x, engine)
     upload_document_links(x, engine)
 
-
-
     import_quickbase_product_data(x, engine)
     import_quickbase_order_data(x, engine)
-
 
     executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='ledger logic.sql')
     factory_order_assignments(x, engine)

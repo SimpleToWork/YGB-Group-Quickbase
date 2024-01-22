@@ -325,11 +325,11 @@ def upload_sales_data(x, engine, start_date):
             ship_postal_code = df['SHIP-POSTAL-CODE'].iloc[j]
             ship_country = df['SHIP-COUNTRY'].iloc[j]
             promotion_ids = df['PROMOTION-IDS'].iloc[j]
-            is_business_order = df['IS-BUSINESS-ORDER'].iloc[j]
-            purchase_order_number = df['PURCHASE-ORDER-NUMBER'].iloc[j]
-            price_designation = df['PRICE-DESIGNATION'].iloc[j]
-            is_transparency = df['IS-TRANSPARENCY'].iloc[j]
-            signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
+            # is_business_order = df['IS-BUSINESS-ORDER'].iloc[j]
+            # purchase_order_number = df['PURCHASE-ORDER-NUMBER'].iloc[j]
+            # price_designation = df['PRICE-DESIGNATION'].iloc[j]
+            # is_transparency = df['IS-TRANSPARENCY'].iloc[j]
+            # signature_confirmation_recommended = df['SIGNATURE-CONFIRMATION-RECOMMENDED'].iloc[j]
             # status = df['STATUS'].iloc[j]
             fba_fee = str(df['FBA_FEE'].iloc[j])
             commission = str(df['COMMISSION'].iloc[j])
@@ -367,11 +367,11 @@ def upload_sales_data(x, engine, start_date):
                 x.upload_data.sales_fields.ship_postal_code: {"value": ship_postal_code},
                 x.upload_data.sales_fields.ship_country: {"value": ship_country},
                 x.upload_data.sales_fields.promotion_ids: {"value": promotion_ids},
-                x.upload_data.sales_fields.is_business_order: {"value": is_business_order},
-                x.upload_data.sales_fields.purchase_order_number: {"value": purchase_order_number},
-                x.upload_data.sales_fields.price_designation: {"value": price_designation},
-                x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
-                x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
+                # x.upload_data.sales_fields.is_business_order: {"value": is_business_order},
+                # x.upload_data.sales_fields.purchase_order_number: {"value": purchase_order_number},
+                # x.upload_data.sales_fields.price_designation: {"value": price_designation},
+                # x.upload_data.sales_fields.is_transparency: {"value": is_transparency},
+                # x.upload_data.sales_fields.signature_confirmation_recommended: {"value": signature_confirmation_recommended},
                 x.upload_data.sales_fields.ranking: {"value": ranking},
                 # x.upload_data.sales_fields.shipment_id: {"value": shipment_id},
                 x.upload_data.sales_fields.fba_fee: {"value": fba_fee},
