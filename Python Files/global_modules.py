@@ -9,7 +9,8 @@ import json
 import crayons
 import numpy as np
 import pandas as pd
-
+import requests
+import platform
 import time
 import datetime
 import sqlalchemy
@@ -91,6 +92,7 @@ class ProgramCredentials:
         self.project_folder = f['project_folder'].replace("%USERNAME%",getpass.getuser())
         self.sql_folder = f['sql_folder'].replace("%USERNAME%", getpass.getuser())
 
+        self.webhook_url = f['webhook_url']
         self.upload_data = self.set_attributes(f['upload_data'])
 
 
@@ -641,10 +643,46 @@ def convert_dataframe_types(df=None):
     return df
 
 
-
-
 class create_folder():
     def __init__(self, foldername=""):
         if not os.path.exists(foldername):
             os.mkdir(foldername)
 
+
+def record_program_performance(x, program_name, method):
+    ip = requests.get('https://api.ipify.org').content.decode('utf8')
+
+    database_name = "stw_task_manager"
+
+    computer_name = platform.node()
+    user = getpass.getuser()
+    time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print_color(f'Data imported', color='g')
+
+    url = x.webhook_url
+    run_task_webhook = f'{url}/method_performance'
+    print_color(f'Attempting to Hit: {run_task_webhook}')
+
+    headers = {'Content-Type': 'application/json'}
+
+    data = {
+        'DateTime':time_now,
+        'Computer':computer_name,
+        'User':user,
+        'Program Name':program_name,
+        'Function':method,
+        'Success':True
+    }
+    print_color(data, color='r')
+
+    data = {"ip": ip, "data": data}
+
+    response = requests.post(url=run_task_webhook, headers=headers, json=json.dumps(data))
+
+    print("Request URL:", response.request.url)
+    print("Request method:", response.request.method)
+    print("Request headers:", response.request.headers)
+    print("Request body:", response.request.body)
+
+    print_color(f"Request status: {response.status_code}", color='g')
+    print_color(f"Request content: {response.content}", color='y')

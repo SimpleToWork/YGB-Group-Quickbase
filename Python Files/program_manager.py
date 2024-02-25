@@ -1,5 +1,6 @@
 
-from global_modules import print_color, run_sql_scripts, engine_setup, ProgramCredentials, create_folder
+from global_modules import print_color, run_sql_scripts, engine_setup, ProgramCredentials, record_program_performance, \
+    create_folder
 from pull_and_push_data import upload_product_data, upload_sales_data, upload_factory_pos, upload_shipment_data, \
     upload_shipment_detail_data, upload_shipment_tracking, upload_inbound_tracking_data, upload_inventory_data, upload_settlement_fees, \
     upload_finance_fees, upload_sales_fees_data, factory_order_assignments, import_factory_pos, upload_returns_data, \
@@ -67,8 +68,8 @@ def run_program(environment):
 
     executeScriptsFromFile(engine=engine, folder_name=sql_folder, file_name='ledger logic.sql')
     factory_order_assignments(x, engine)
-    google_sheet_update(x=x, program_name="YGB Group", method="Run Program")
-
+    # google_sheet_update(x=x, program_name="YGB Group", method="Run Program")
+    record_program_performance(x,  program_name="YGB Group", method="Run Program")
 
 if __name__ == '__main__':
 
