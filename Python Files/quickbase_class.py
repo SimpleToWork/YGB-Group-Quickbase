@@ -148,6 +148,45 @@ class QuickbaseAPI():
 
         return df, column_dict
 
+    def get_report_records(self, table_id=None, report_id=None):
+        params = {
+            'tableId': table_id,
+        }
+        report_path = f'https://api.quickbase.com/v1/reports/{report_id}/run'
+        print(report_path)
+        r = requests.post(report_path,
+            params=params,
+            headers=self.headers
+        )
+
+        # fields_data = r.json()
+        print_color(r.json(), color='r')
+        response = eval(json.dumps(r.json()).replace("null", "None").replace("false", "False").replace("true", "True"))
+        data = response.get("data")
+        fields_data = response.get("fields")
+        field_dict = {}
+
+        for each_item in fields_data:
+            # print_color(each_item, color='g')
+            # print_color(each_item.keys(), color='r')
+            id = each_item.get('id')
+            fieldType = each_item.get('fieldType')
+            label = each_item.get('label')
+            field_dict.update({id: [label, fieldType]})
+
+        # # print(data)
+        df = pd.DataFrame(data)
+
+        for each_col in df.columns:
+            df[each_col] = df[each_col].apply(lambda x: x.get('value'))
+
+        df_columns = list(df.columns)
+        df_columns = [int(x) for x in df_columns]
+        df.columns = [field_dict.get(x)[0].replace(" ", "_").replace("#", "_Num") for x in df_columns]
+        # print_color(df, color='y')
+
+        return df
+
     def update_qb_table_records(self,  table_id=None, data = [{}]):
         body = {"to": table_id, "data": data,
                 "fieldsToReturn": [3]}
@@ -179,22 +218,53 @@ class QuickbaseAPI():
 
         print_color(f'Records Deleted', color='b')
 
-
-    def create_qb_table_records(self,  table_id=None, user_token=None, apptoken=None,
+    def purge_table_records(self,table_id=None, user_token=None, apptoken=None,
                                 username=None, password=None,
-                                filter_val=None, update_type=None, data=None,
-                                reference_column=None
-                                ):
+                                filter_val=None,
+                                reference_column=None,
+                            filter_type = "EX"
+                            ):
         headers = self.headers
 
         r = requests.get(
             f'{self.hostname}/db/main?a=API_Authenticate&username={username}&password={password}&hours=24')
         ticket = str(r.content).split('</ticket>')[0].split('<ticket>')[-1]
-        print_color(ticket, color='y')
+
+        print(self.hostname,
+              table_id,
+              reference_column,
+              filter_val,
+              ticket,
+              user_token,
+              apptoken)
+
+        purge_records_url = f"{self.hostname}/db/" + table_id + "?a=API_PurgeRecords&query={" + str(reference_column) + "."+ filter_type +".'" + str( filter_val) + "'}&ticket=" + ticket + "&user_token=" + user_token + "&apptoken=" + apptoken
+
+        print_color(purge_records_url, color='g')
+        r = requests.get(purge_records_url)
+        print_color(r.content)
+
+        print_color(f'Records Purged', color='b')
+
+    def create_qb_table_records(self,  table_id=None, user_token=None, apptoken=None,
+                                username=None, password=None,
+                                filter_val=None, update_type=None, data=None,
+                                reference_column=None,
+                                filter_type="EX"
+                                ):
+        headers = self.headers
+
+
 
         body = {"to": f'{table_id}', "data": data, "fieldsToReturn": ['3']}
-        print_color(body, color='g')
+        # print_color(body, color='g')
         if update_type == 'purge_and_reset':
+
+            r = requests.get(
+                f'{self.hostname}/db/main?a=API_Authenticate&username={username}&password={password}&hours=24')
+            ticket = str(r.content).split('</ticket>')[0].split('<ticket>')[-1]
+            print_color(ticket, color='y')
+
             print(self.hostname,
                   table_id,
                   reference_column,
@@ -203,7 +273,7 @@ class QuickbaseAPI():
                   user_token,
                   apptoken)
 
-            purge_records_url = f"{self.hostname}/db/" + table_id + "?a=API_PurgeRecords&query={" + str(reference_column) + ".EX.'" + str(filter_val) + "'}&ticket=" + ticket + "&user_token=" + user_token + "&apptoken=" + apptoken
+            purge_records_url = f"{self.hostname}/db/" + table_id + "?a=API_PurgeRecords&query={" + str(reference_column) + "."+ filter_type +".'" + str(filter_val) + "'}&ticket=" + ticket + "&user_token=" + user_token + "&apptoken=" + apptoken
 
             print_color(purge_records_url, color='g')
             r = requests.get(purge_records_url)

@@ -10,21 +10,52 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+import string
+import math
 import pandas as pd
 import numpy as np
+import os
+from collections import namedtuple
 # from sqlalchemy import inspect
 # import global_modules
-# from glob l_modules import engine_setup, print_color, run_sql_scripts
+from global_modules import print_color
+import platform
+import datetime
+import getpass
+
+RangeCoordinates = namedtuple('RangeCoordinates', 'row column number_of_rows number_of_columns sheet_name')
+
+
+def google_sheet_update(x, program_name, method):
+
+    client_secret_file = x.gsheet_credentials_file
+    token_file = x.gsheet_token_file
+    sheet_id = x.gsheet_dashboard_id
+    SCOPES = x.gsheet_scopes
+    GsheetAPI = GoogleSheetsAPI(credentials_file=client_secret_file, token_file=token_file, scopes=SCOPES, sheet_id=sheet_id)
+
+    computer_name = platform.node()
+    user = getpass.getuser()
+    time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data_list = [time_now, computer_name, user, program_name, method, True]
+    sheet_name = x.gsheet_dashboard_sheet_name
+
+    GsheetAPI.insert_row_to_sheet(sheetname=sheet_name, gid=x.gsheet_gid,
+                                  insert_range=['A', 1, "F", 1],
+                                  data=[data_list])
 
 
 class GoogleSheetsAPI():
-    def __init__(self, client_secret_file, token_file, sheet_id, scopes):
-        self.client_secret_file = client_secret_file
+    def __init__(self, credentials_file=None, token_file=None, scopes=None, sheet_id=None):
+        self.credentials_file = credentials_file
         self.token_file = token_file
         self.sheet_id = sheet_id
         self.scopes = scopes
 
+
         self.service = self.service_setup()
+
+        print_color(f'https://docs.google.com/spreadsheets/d/{sheet_id}', color='y')
 
 
     def service_setup(self):
@@ -37,9 +68,13 @@ class GoogleSheetsAPI():
             # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                try:
+                    creds.refresh(Request())
+                except:
+                    os.remove(self.token_file)
+                    self.service_setup()
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(self.client_secret_file, self.scopes)
+                flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.scopes)
                 creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
             with open( self.token_file , 'w') as token:
@@ -60,45 +95,7 @@ class GoogleSheetsAPI():
 
         print('Spreadsheet ID: {0}'.format(spreadsheet.get('spreadsheetId')))
 
-        # body = {
-        #     'requests': [{
-        #         'addSheet': {
-        #             'properties': {
-        #                 'title': 'Product_Data',
-        #                 'tabColor': {
-        #                     'red': 0.44,
-        #                     'green': 0.99,
-        #                     'blue': 0.50
-        #                 }
-        #             }
-        #         },
-        #     }]
-        # }
-        #
-        # result = self.service.spreadsheets().batchUpdate(
-        #     spreadsheetId=spreadsheet_id,
-        #     body=body).execute()
-        #
-        # body = {
-        #       "requests": [
-        #         {
-        #           "deleteSheet": {
-        #             "sheetId": 0
-        #           }
-        #         }
-        #       ]
-        #     }
-        #
-        # result = self.service.spreadsheets().batchUpdate(
-        #     spreadsheetId=spreadsheet_id,
-        #     body=body).execute()
-        #
-        # scripts=[]
-        # scripts.append(f'Update client_credentials set google_sheet = "{spreadsheet_id}" where company_name= "{client_name}";')
-        #
-        # run_sql_scripts(engine=engine, scripts=scripts)
-
-    def get_data_from_sheet(self, sheetname, range_name):
+    def get_data_from_sheet(self, sheetname, range_name, get_hyperlinks=False):
         """Shows basic usage of the Sheets API.
         Prints values from a sample spreadsheet.
         """
@@ -106,9 +103,24 @@ class GoogleSheetsAPI():
 
         # Call the Sheets API
         sheet = self.service.spreadsheets()
+
+        # if get_hyperlinks is True:
+        #     result = sheet.get(spreadsheetId=self.sheet_id).execute()
+        #
+        # else:
         result = sheet.values().get(spreadsheetId=self.sheet_id,
-                                    range=f'{sheetname}!{range_name}').execute()
+                                range=f'{sheetname}!{range_name}').execute()
+        # print_color(result, color='y')
         values = result.get('values', [])
+
+
+        #     for row in result.get('values', []):
+        #         for cell in row:
+        #             print_color(cell, color='g')
+        #             if 'hyperlink' in cell:
+        #                 print(f'Hyperlink found: {cell["hyperlink"]}')
+        #     df = None
+        # else:
         df = pd.DataFrame(values)
         if df.shape[0] > 0:
             new_header = df.iloc[0]
@@ -116,6 +128,28 @@ class GoogleSheetsAPI():
             df = df[1:]
 
         return df
+
+    def get_row_count(self, sheetname):
+        # spreadsheet = self.service.spreadsheets()
+        sheet = self.service.spreadsheets()
+        response = sheet.values().get(spreadsheetId=self.sheet_id,range=f'{sheetname}').execute()
+
+        display_a1 = response["range"]
+        print_color(f'Range: {display_a1}', color='g')
+        first_cell_a1 = display_a1.split('!')[1].split(':')[0]
+
+
+        if response.get("values") is None:
+            print_color(f'No data found in sheet {sheetname}', color='r')
+
+
+        number_of_rows = len(response["values"])
+        number_of_columns = 0
+
+        print_color(number_of_rows, color='y')
+        print_color(first_cell_a1, color='y')
+
+        return number_of_rows
 
     def write_data_to_sheet(self, data,sheetname, row_number, include_headers=True, clear_data=False):
 
@@ -151,4 +185,153 @@ class GoogleSheetsAPI():
 
         print(f'Data Updated')
 
+    def insert_row_to_sheet(self, sheetname, gid,
+                            insert_range= ['A',1,'A',1],
+                            data=None,
+                            insert_dropdown=False, dropdown_values =[],
+                            dropdown_range =['A',1,'A',1],
+                            copy_area=False,
+                            copy_source_range =[0,1,1,1,1],
+                            copy_destinations_range = [0,1,1,1,1],
+                            copy_pasteType = None
 
+                            ):
+
+        request_body = [
+                {
+                    'insertDimension': {
+                        'range': {
+                            'sheetId': gid,
+                            'dimension': 'ROWS',
+                            'startIndex': insert_range[1],
+                            'endIndex': insert_range[3] + 1
+                        },
+                        'inheritFromBefore': True
+                    }
+                }
+            ]
+
+        dropdown = None
+        if insert_dropdown is True:
+            dropdown = {
+                "setDataValidation": {
+                    "range": {
+                        "sheetId": gid,
+                        "startRowIndex": dropdown_range[1],
+                        "endRowIndex": dropdown_range[3],
+                        "startColumnIndex": dropdown_range[0],
+                        "endColumnIndex": dropdown_range[2]
+                    },
+                    "rule": {
+                        "condition": {
+                            "type": 'ONE_OF_LIST',
+                            "values":dropdown_values,
+                        },
+                        "showCustomUi": True,
+                        "strict": True
+                    }
+                }
+            }
+
+        copy_paste = None
+        if copy_area is True:
+            copy_paste= {
+                "copyPaste": {
+                    'source': {
+                        "sheetId": copy_source_range[0],
+                        "startColumnIndex":  copy_source_range[1],
+                        "startRowIndex":  copy_source_range[2],
+                        "endColumnIndex":  copy_source_range[3],
+                        "endRowIndex":  copy_source_range[4],
+                        },
+                    'destination': {
+                        "sheetId": copy_destinations_range[0],
+                        "startColumnIndex":  copy_destinations_range[1],
+                        "startRowIndex":  copy_destinations_range[2],
+                        "endColumnIndex":  copy_destinations_range[3],
+                        "endRowIndex":  copy_destinations_range[4],
+                        },
+                    'pasteType': copy_pasteType,
+                    'pasteOrientation': 'NORMAL'
+                }
+            }
+
+        body = {'requests': request_body}
+        print_color(body, color='p')
+
+        self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id,body=body).execute()
+        if dropdown is not None:
+            body = {'requests': [dropdown]}
+            print_color(body, color='p')
+            result = self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id, body=body).execute()
+            print_color(f'result: {result}', color='p')
+
+        if copy_paste is not None:
+            body = {'requests': [copy_paste]}
+            print_color(body, color='p')
+            result = self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id, body=body).execute()
+            print_color(f'result: {result}', color='p')
+
+        if data is not None:
+            body = {
+                'values': data
+            }
+
+            sheet_range = f'{sheetname}!{insert_range[0]}{insert_range[1]}:{insert_range[2]}{insert_range[3]}'
+            print_color(sheet_range, color='y')
+
+            result = self.service.spreadsheets().values().append(
+                spreadsheetId=self.sheet_id,range=sheet_range,
+                valueInputOption='USER_ENTERED',
+                # insertDataOption='INSERT_ROWS',
+                body=body).execute()
+
+        # self.service.spreadsheets().append_row(insertRow, table_range=f"{start_column}{start_row}")
+
+    def sort_sheet(self, gid, sort_range=  [1,1,1,1], dimensionIndex=1, sortOrder='ASCENDING'):
+
+        request_body = [
+            {
+                "sortRange": {
+                    "range": {
+                        "sheetId": gid,
+                        "startRowIndex": sort_range[1],
+                        "endRowIndex": sort_range[3],
+                        "startColumnIndex": sort_range[0],
+                        "endColumnIndex": sort_range[2]
+                    },
+                    "sortSpecs": [
+                        {
+                            "dimensionIndex": dimensionIndex,
+                            "sortOrder": sortOrder
+                        },
+                    ]
+                }
+            }
+        ]
+
+        body = {'requests': request_body}
+        print_color(body, color='p')
+
+        self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id, body=body).execute()
+
+
+    def delete_row_from_sheet(self,  gid,
+                            delete_range= ['A',1,'A',1]):
+        request_body = [
+            {
+                'deleteDimension': {
+                    'range': {
+                        'sheetId': gid,
+                        'dimension': 'ROWS',
+                        'startIndex': str(delete_range[1]),
+                        'endIndex':str(delete_range[3] + 1)
+                    }
+                }
+            }
+        ]
+
+        body = {'requests': request_body}
+        print_color(body, color='p')
+
+        self.service.spreadsheets().batchUpdate(spreadsheetId=self.sheet_id, body=body).execute()
