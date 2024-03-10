@@ -651,9 +651,7 @@ class create_folder():
 
 def record_program_performance(x, program_name, method):
     ip = requests.get('https://api.ipify.org').content.decode('utf8')
-
     database_name = "stw_task_manager"
-
     computer_name = platform.node()
     user = getpass.getuser()
     time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
