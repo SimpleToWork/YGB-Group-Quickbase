@@ -665,6 +665,7 @@ def record_program_performance(x, program_name, method):
 
     headers = {'Content-Type': 'application/json'}
 
+
     data = {
         'DateTime':time_now,
         'Computer':computer_name,
