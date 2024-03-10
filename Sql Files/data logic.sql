@@ -7,6 +7,7 @@ where ranking =1;
 
 alter table current_all_listings rename column asin1 to asin;
 alter table current_all_listings rename column `SELLER-SKU` to sku;
+alter table current_all_listings modify column `ITEM-NAME` text;
 
 drop temporary table if exists missing_products;
 create temporary table if not exists  missing_products
